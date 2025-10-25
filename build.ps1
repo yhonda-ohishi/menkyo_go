@@ -35,14 +35,22 @@ if ($LASTEXITCODE -ne 0) {
 }
 Write-Host "Server built successfully: bin/server.exe" -ForegroundColor Green
 
-# Readerアプリをビルド
+# Readerアプリをビルド（タイムスタンプ付き）
 Write-Host "`nBuilding reader..." -ForegroundColor Yellow
-go build -o bin/reader.exe ./cmd/reader
+$timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
+$readerOutput = "bin/reader_$timestamp.exe"
+$version = "1.0.0"
+$ldflags = "-X main.Version=$version -X main.BuildTime=$timestamp"
+go build -ldflags $ldflags -o $readerOutput ./cmd/reader
 if ($LASTEXITCODE -ne 0) {
     Write-Host "Error: Failed to build reader" -ForegroundColor Red
     exit 1
 }
-Write-Host "Reader built successfully: bin/reader.exe" -ForegroundColor Green
+Write-Host "Reader built successfully: $readerOutput" -ForegroundColor Green
+
+# reader.exeへのコピーも作成（後方互換性）
+Copy-Item $readerOutput "bin/reader.exe" -Force
+Write-Host "Also copied to: bin/reader.exe" -ForegroundColor Cyan
 
 Write-Host "`nBuild completed successfully!" -ForegroundColor Green
 Write-Host "`nUsage:" -ForegroundColor Cyan

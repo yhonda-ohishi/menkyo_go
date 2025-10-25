@@ -3,6 +3,7 @@ package database
 import (
 	"database/sql"
 	"fmt"
+	"os"
 	"time"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -10,7 +11,8 @@ import (
 
 // Logger SQLiteロガー
 type Logger struct {
-	db *sql.DB
+	db        *sql.DB
+	processID int
 }
 
 // NewLogger 新しいLoggerを作成
@@ -20,7 +22,10 @@ func NewLogger(dbPath string) (*Logger, error) {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
 
-	logger := &Logger{db: db}
+	logger := &Logger{
+		db:        db,
+		processID: os.Getpid(),
+	}
 
 	// テーブルを初期化
 	if err := logger.initTables(); err != nil {
@@ -49,7 +54,8 @@ func (l *Logger) initTables() error {
 			level TEXT NOT NULL,
 			message TEXT NOT NULL,
 			reader_id TEXT,
-			card_id TEXT
+			card_id TEXT,
+			process_id INTEGER
 		)`,
 		// 読み取り履歴テーブル
 		`CREATE TABLE IF NOT EXISTS read_history (
@@ -63,7 +69,8 @@ func (l *Logger) initTables() error {
 			remain_count TEXT,
 			felica_uid TEXT,
 			status TEXT NOT NULL,
-			error_message TEXT
+			error_message TEXT,
+			process_id INTEGER
 		)`,
 		// インデックス
 		`CREATE INDEX IF NOT EXISTS idx_logs_timestamp ON logs(timestamp)`,
@@ -88,9 +95,9 @@ func (l *Logger) LogMessage(level, message string) error {
 
 // LogMessageWithContext コンテキスト付きでメッセージをログに記録
 func (l *Logger) LogMessageWithContext(level, message, readerID, cardID string) error {
-	query := `INSERT INTO logs (level, message, reader_id, card_id) VALUES (?, ?, ?, ?)`
+	query := `INSERT INTO logs (level, message, reader_id, card_id, process_id) VALUES (?, ?, ?, ?, ?)`
 
-	_, err := l.db.Exec(query, level, message, readerID, cardID)
+	_, err := l.db.Exec(query, level, message, readerID, cardID, l.processID)
 	if err != nil {
 		return fmt.Errorf("failed to insert log: %w", err)
 	}
@@ -116,8 +123,8 @@ type ReadHistoryRecord struct {
 // LogReadHistory 読み取り履歴を記録
 func (l *Logger) LogReadHistory(record *ReadHistoryRecord) error {
 	query := `INSERT INTO read_history
-		(reader_id, card_id, card_type, atr, expiry_date, remain_count, felica_uid, status, error_message)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+		(reader_id, card_id, card_type, atr, expiry_date, remain_count, felica_uid, status, error_message, process_id)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 
 	result, err := l.db.Exec(query,
 		record.ReaderID,
@@ -129,6 +136,7 @@ func (l *Logger) LogReadHistory(record *ReadHistoryRecord) error {
 		record.FeliCaUID,
 		record.Status,
 		record.ErrorMessage,
+		l.processID,
 	)
 
 	if err != nil {

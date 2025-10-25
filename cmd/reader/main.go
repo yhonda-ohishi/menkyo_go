@@ -4,11 +4,16 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"io"
 	"log"
 	"os"
+	"os/exec"
 	"os/signal"
+	"strings"
 	"syscall"
+	"time"
+	"unsafe"
 
 	"menkyo_go/internal/config"
 	"menkyo_go/internal/database"
@@ -17,14 +22,84 @@ import (
 	pb "menkyo_go/proto"
 )
 
+var (
+	// ビルド時に埋め込まれる変数
+	Version   = "dev"
+	BuildTime = "unknown"
+)
+
+var (
+	kernel32           = syscall.NewLazyDLL("kernel32.dll")
+	procCreateMutex    = kernel32.NewProc("CreateMutexW")
+	procReleaseMutex   = kernel32.NewProc("ReleaseMutex")
+	procGetLastError   = kernel32.NewProc("GetLastError")
+)
+
+const (
+	ERROR_ALREADY_EXISTS = 183
+)
+
+func killOldReaderProcesses() {
+	log.Println("Killing all existing reader.exe processes...")
+	cmd := exec.Command("taskkill", "/F", "/IM", "reader.exe")
+	output, _ := cmd.CombinedOutput()
+	log.Printf("taskkill output: %s", output)
+	time.Sleep(500 * time.Millisecond) // プロセス終了を待つ
+}
+
 func main() {
-	// ログファイル設定
-	logFile, err := os.OpenFile("reader.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	// 多重起動チェック（Windows Mutex）
+	mutexName, _ := syscall.UTF16PtrFromString("Global\\MenkyoReaderMutex")
+	r1, _, err := procCreateMutex.Call(0, 0, uintptr(unsafe.Pointer(mutexName)))
+	if r1 == 0 {
+		log.Fatalf("Failed to create mutex")
+	}
+	mutex := syscall.Handle(r1)
+	defer syscall.CloseHandle(mutex)
+
+	// errがERROR_ALREADY_EXISTSかチェック
+	if err.(syscall.Errno) == ERROR_ALREADY_EXISTS {
+		log.Println("Another instance detected. Killing old processes...")
+		syscall.CloseHandle(mutex) // 一旦Mutexを閉じる
+
+		killOldReaderProcesses()
+
+		// Mutexが完全にリリースされるまで待機してリトライ
+		for i := 0; i < 10; i++ {
+			time.Sleep(200 * time.Millisecond)
+			r1, _, err = procCreateMutex.Call(0, 0, uintptr(unsafe.Pointer(mutexName)))
+			if r1 == 0 {
+				continue
+			}
+			mutex = syscall.Handle(r1)
+			if err.(syscall.Errno) != ERROR_ALREADY_EXISTS {
+				log.Println("Successfully acquired mutex after killing old processes")
+				break
+			}
+			syscall.CloseHandle(mutex)
+		}
+		if err.(syscall.Errno) == ERROR_ALREADY_EXISTS {
+			log.Fatalf("Failed to acquire mutex after killing old processes")
+		}
+	}
+
+	defer procReleaseMutex.Call(uintptr(mutex))
+
+	// ログファイル設定（logフォルダに日付ごと）
+	logDir := "log"
+	if err := os.MkdirAll(logDir, 0755); err != nil {
+		log.Printf("Warning: failed to create log directory: %v", err)
+	}
+
+	// 日付ごとのログファイル名（例: log/reader_20251026.log）
+	logFileName := fmt.Sprintf("%s/reader_%s.log", logDir, time.Now().Format("20060102"))
+	logFile, err := os.OpenFile(logFileName, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 	if err == nil {
 		defer logFile.Close()
 		// コンソールとファイルの両方に出力
 		multiWriter := io.MultiWriter(os.Stdout, logFile)
 		log.SetOutput(multiWriter)
+		log.Printf("Log file: %s", logFileName)
 	}
 
 	// .envファイルを読み込む
@@ -41,9 +116,18 @@ func main() {
 	readerID := flag.String("reader-id", cfg.ReaderID, "Reader ID")
 	flag.Parse()
 
-	log.Printf("Starting license reader (Reader ID: %s)", *readerID)
+	// データベースのフルパスを取得
+	dbFullPath := *dbPath
+	if !strings.HasPrefix(*dbPath, "/") && !strings.Contains(*dbPath, ":\\") {
+		if cwd, err := os.Getwd(); err == nil {
+			dbFullPath = cwd + "\\" + *dbPath
+		}
+	}
+
+	log.Printf("Starting license reader v%s (Built: %s)", Version, BuildTime)
+	log.Printf("Reader ID: %s", *readerID)
 	log.Printf("Server address: %s", *serverAddr)
-	log.Printf("Database path: %s", *dbPath)
+	log.Printf("Database path: %s", dbFullPath)
 
 	// データベース初期化
 	logger, err := database.NewLogger(*dbPath)
@@ -67,9 +151,10 @@ func main() {
 		logger.LogMessage("INFO", "Connected to gRPC server")
 	}
 
-	// NFC リーダー初期化（内部ログはDBのみ）
+	// NFC リーダー初期化（内部ログはログファイルとDBの両方に出力）
 	licenseReader, err := nfc.NewLicenseReader(func(msg string) {
-		// ログファイルとDBのみに記録（コンソールには出さない）
+		// ログファイルとDBの両方に記録
+		log.Printf("[NFC] %s", msg)
 		logger.LogMessage("DEBUG", msg)
 	})
 	if err != nil {

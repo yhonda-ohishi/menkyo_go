@@ -16,25 +16,28 @@ var (
 	procConnect        = winscard.NewProc("SCardConnectW")
 	procDisconnect     = winscard.NewProc("SCardDisconnect")
 	procTransmit       = winscard.NewProc("SCardTransmit")
+	procControl        = winscard.NewProc("SCardControl")
 	procGetStatusChange = winscard.NewProc("SCardGetStatusChangeW")
 	procStatus         = winscard.NewProc("SCardStatusW")
 )
 
 const (
-	SCARD_SCOPE_USER      = 0
-	SCARD_SCOPE_TERMINAL  = 1
-	SCARD_SCOPE_SYSTEM    = 2
-	SCARD_SHARE_EXCLUSIVE = 1
-	SCARD_SHARE_SHARED    = 2
-	SCARD_LEAVE_CARD      = 0
-	SCARD_RESET_CARD      = 1
-	SCARD_UNPOWER_CARD    = 2
-	SCARD_EJECT_CARD      = 3
-	SCARD_PROTOCOL_T0     = 0x00000001
-	SCARD_PROTOCOL_T1     = 0x00000002
-	SCARD_PROTOCOL_RAW    = 0x00010000
-	SCARD_PCI_T0          = 0
-	SCARD_PCI_T1          = 1
+	SCARD_SCOPE_USER         = 0
+	SCARD_SCOPE_TERMINAL     = 1
+	SCARD_SCOPE_SYSTEM       = 2
+	SCARD_SHARE_EXCLUSIVE    = 1
+	SCARD_SHARE_SHARED       = 2
+	SCARD_SHARE_DIRECT       = 3
+	SCARD_LEAVE_CARD         = 0
+	SCARD_RESET_CARD         = 1
+	SCARD_UNPOWER_CARD       = 2
+	SCARD_EJECT_CARD         = 3
+	SCARD_PROTOCOL_T0        = 0x00000001
+	SCARD_PROTOCOL_T1        = 0x00000002
+	SCARD_PROTOCOL_RAW       = 0x00010000
+	SCARD_PROTOCOL_UNDEFINED = 0x00000000
+	SCARD_PCI_T0             = 0
+	SCARD_PCI_T1             = 1
 
 	SCARD_STATE_UNAWARE   = 0x00000000
 	SCARD_STATE_CHANGED   = 0x00000002
@@ -43,6 +46,9 @@ const (
 
 	INFINITE              = 0xFFFFFFFF
 	MAX_ATR_SIZE          = 33
+
+	// Control Code for FeliCa Polling
+	IOCTL_SMARTCARD_VENDOR_IFD_EXCHANGE = 0x42000000 + 3500
 )
 
 type SCARD_IO_REQUEST struct {
@@ -185,6 +191,35 @@ func (c *Context) Connect(reader string) (*Card, []byte, error) {
 	return card, atr, nil
 }
 
+// Direct接続（FeliCa Polling用）
+func (c *Context) ConnectDirect(reader string) (*Card, error) {
+	readerName, err := syscall.UTF16PtrFromString(reader)
+	if err != nil {
+		return nil, err
+	}
+
+	var handle uintptr
+	var activeProtocol uint32
+
+	ret, _, _ := procConnect.Call(
+		c.handle,
+		uintptr(unsafe.Pointer(readerName)),
+		uintptr(SCARD_SHARE_DIRECT),
+		uintptr(SCARD_PROTOCOL_UNDEFINED),
+		uintptr(unsafe.Pointer(&handle)),
+		uintptr(unsafe.Pointer(&activeProtocol)),
+	)
+
+	if ret != 0 {
+		return nil, fmt.Errorf("SCardConnect (Direct) failed: 0x%X", ret)
+	}
+
+	return &Card{
+		handle:         handle,
+		activeProtocol: activeProtocol,
+	}, nil
+}
+
 // カード状態を取得してATRを取得
 func (c *Card) GetATR() ([]byte, error) {
 	var readerLen uint32 = 256
@@ -257,6 +292,28 @@ func (c *Card) Transmit(apdu []byte) ([]byte, byte, byte, error) {
 	return data, sw1, sw2, nil
 }
 
+// SCardControlを使った直接コマンド送信（FeliCa Polling用）
+func (c *Card) Control(cmd []byte) ([]byte, error) {
+	recvBuf := make([]byte, 256)
+	var bytesReturned uint32
+
+	ret, _, _ := procControl.Call(
+		c.handle,
+		uintptr(IOCTL_SMARTCARD_VENDOR_IFD_EXCHANGE),
+		uintptr(unsafe.Pointer(&cmd[0])),
+		uintptr(len(cmd)),
+		uintptr(unsafe.Pointer(&recvBuf[0])),
+		uintptr(len(recvBuf)),
+		uintptr(unsafe.Pointer(&bytesReturned)),
+	)
+
+	if ret != 0 {
+		return nil, fmt.Errorf("SCardControl failed: 0x%X", ret)
+	}
+
+	return recvBuf[:bytesReturned], nil
+}
+
 // カード状態変化を監視
 func (c *Context) WaitForCardChange(readers []string, timeout uint32) ([]ReaderState, error) {
 	states := make([]ReaderState, len(readers))
@@ -282,4 +339,24 @@ func (c *Context) WaitForCardChange(readers []string, timeout uint32) ([]ReaderS
 	}
 
 	return states, nil
+}
+
+// WaitForCardChangeWithStates 状態を保持してカード変化を待機
+func (c *Context) WaitForCardChangeWithStates(states []ReaderState, timeout uint32) error {
+	if len(states) == 0 {
+		return fmt.Errorf("no reader states provided")
+	}
+
+	ret, _, _ := procGetStatusChange.Call(
+		c.handle,
+		uintptr(timeout),
+		uintptr(unsafe.Pointer(&states[0])),
+		uintptr(len(states)),
+	)
+
+	if ret != 0 && ret != 0x8010000A { // SCARD_E_TIMEOUT
+		return fmt.Errorf("SCardGetStatusChange failed: 0x%X", ret)
+	}
+
+	return nil
 }
