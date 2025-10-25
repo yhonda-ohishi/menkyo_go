@@ -1,0 +1,46 @@
+syntax = "proto3";
+
+package license;
+
+option go_package = "menkyo_go/proto/license";
+
+// 免許証読み取りサービス
+service LicenseReader {
+  // 読み取った免許証データをプッシュ
+  rpc PushLicenseData(LicenseData) returns (PushResponse);
+
+  // 読み取りログをプッシュ
+  rpc PushReadLog(ReadLog) returns (PushResponse);
+}
+
+// 免許証データ
+message LicenseData {
+  string card_id = 1;              // カードID
+  string name = 2;                 // 氏名
+  string name_kana = 3;            // 氏名（カナ）
+  string birth_date = 4;           // 生年月日 (YYYY-MM-DD)
+  string address = 5;              // 住所
+  string issue_date = 6;           // 交付日 (YYYY-MM-DD)
+  string expiry_date = 7;          // 有効期限 (YYYY-MM-DD)
+  string license_number = 8;       // 免許証番号
+  string license_type = 9;         // 免許種別
+  bytes photo = 10;                // 顔写真データ
+  int64 read_timestamp = 11;       // 読み取りタイムスタンプ (Unix時刻)
+  string reader_id = 12;           // リーダーID
+}
+
+// 読み取りログ
+message ReadLog {
+  int64 timestamp = 1;             // タイムスタンプ
+  string reader_id = 2;            // リーダーID
+  string status = 3;               // ステータス (success/error)
+  string error_message = 4;        // エラーメッセージ（エラー時）
+  string card_id = 5;              // カードID（成功時）
+}
+
+// レスポンス
+message PushResponse {
+  bool success = 1;
+  string message = 2;
+  string request_id = 3;           // リクエストID
+}
