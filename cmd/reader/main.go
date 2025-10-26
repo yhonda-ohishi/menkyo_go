@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 	"unsafe"
@@ -136,55 +137,147 @@ func main() {
 
 	logger.LogMessage("INFO", "License reader started")
 
-	// woff-cl/woff-svクライアント初期化
+	// woff-cl/woff-svクライアント初期化（スレッドセーフ）
 	var woffSvClient *woffsv.AuthClient
+	var woffSvMutex sync.RWMutex
+	var heartbeatTicker *time.Ticker
+
+	// woff-svクライアントを設定する関数（DNSエラー時はリトライ）
+	setWoffSvClient := func(backendURL string) error {
+		maxRetries := 5
+		retryDelay := 3 * time.Second
+
+		for attempt := 1; attempt <= maxRetries; attempt++ {
+			newClient, err := woffsv.NewAuthClient(backendURL, cfg.WoffClSecret)
+			if err != nil {
+				return fmt.Errorf("failed to create client: %w", err)
+			}
+
+			// Heartbeatで接続確認
+			hb, err := newClient.Heartbeat()
+			if err != nil {
+				newClient.Close()
+
+				// DNSエラーの場合はリトライ
+				errMsg := err.Error()
+				isDNSError := strings.Contains(errMsg, "no such host") ||
+							 strings.Contains(errMsg, "lookup")
+
+				if isDNSError && attempt < maxRetries {
+					log.Printf("DNS resolution failed (attempt %d/%d), retrying in %v...", attempt, maxRetries, retryDelay)
+					logger.LogMessage("WARNING", fmt.Sprintf("DNS resolution failed (attempt %d/%d)", attempt, maxRetries))
+					time.Sleep(retryDelay)
+					continue
+				}
+
+				return fmt.Errorf("heartbeat failed: %w", err)
+			}
+
+			log.Printf("Connected to woff-sv: %s (status: %s, version: %s)", backendURL, hb.Status, hb.Version)
+			logger.LogMessage("INFO", fmt.Sprintf("woff-sv connected: url=%s, status=%s, version=%s", backendURL, hb.Status, hb.Version))
+
+			// 古いクライアントを閉じて新しいクライアントに置き換え
+			woffSvMutex.Lock()
+			if woffSvClient != nil {
+				woffSvClient.Close()
+			}
+			woffSvClient = newClient
+			woffSvMutex.Unlock()
+
+			return nil
+		}
+
+		return fmt.Errorf("failed to connect after %d attempts", maxRetries)
+	}
+
+	// woff-svクライアントを取得する関数（スレッドセーフ）
+	getWoffSvClient := func() *woffsv.AuthClient {
+		woffSvMutex.RLock()
+		defer woffSvMutex.RUnlock()
+		return woffSvClient
+	}
+
 	if cfg.WoffClEndpoint != "" && cfg.WoffClSecret != "" {
 		log.Printf("Fetching backend URL from woff-cl: %s", cfg.WoffClEndpoint)
 		woffClClient := woffcl.NewClient(cfg.WoffClEndpoint, cfg.WoffClSecret)
 		backendURL, err := woffClClient.GetBackendURL()
+
 		if err != nil {
 			log.Printf("Warning: Failed to get backend URL from woff-cl: %v", err)
 			logger.LogMessage("WARNING", fmt.Sprintf("Failed to get backend URL: %v", err))
+
+			// woff-clにアクセスできない場合、localhostにフォールバック（オフライン対応）
+			log.Printf("Falling back to localhost for offline mode")
+			logger.LogMessage("INFO", "Falling back to localhost for offline mode")
+			backendURL = "http://localhost:50051"
+
+			if err := setWoffSvClient(backendURL); err != nil {
+				log.Printf("Warning: Failed to connect to localhost: %v", err)
+				logger.LogMessage("WARNING", fmt.Sprintf("Failed to connect to localhost: %v", err))
+			} else {
+				log.Printf("Connected to localhost (offline mode)")
+				logger.LogMessage("INFO", "Connected to localhost (offline mode)")
+			}
 		} else {
 			log.Printf("Backend URL: %s", backendURL)
 			logger.LogMessage("INFO", fmt.Sprintf("Backend URL from woff-cl: %s", backendURL))
 
-			// woff-svクライアント初期化 (FRONTEND_SECRET = WOFF_CL_SECRETを使用)
-			woffSvClient, err = woffsv.NewAuthClient(backendURL, cfg.WoffClSecret)
-			if err != nil {
+			// 初回接続
+			if err := setWoffSvClient(backendURL); err != nil {
 				log.Printf("Warning: Failed to connect to woff-sv: %v", err)
 				logger.LogMessage("WARNING", fmt.Sprintf("Failed to connect to woff-sv: %v", err))
-			} else {
-				defer woffSvClient.Close()
-
-				// Heartbeatでサーバーの接続を確認
-				hb, err := woffSvClient.Heartbeat()
-				if err != nil {
-					log.Printf("Warning: woff-sv heartbeat failed: %v", err)
-					logger.LogMessage("WARNING", fmt.Sprintf("woff-sv heartbeat failed: %v", err))
-				} else {
-					log.Printf("Connected to woff-sv: %s (status: %s, version: %s)", backendURL, hb.Status, hb.Version)
-					logger.LogMessage("INFO", fmt.Sprintf("woff-sv heartbeat OK: status=%s, version=%s", hb.Status, hb.Version))
-				}
-
-				// 定期的にHeartbeatを送信（30秒間隔）
-				go func() {
-					ticker := time.NewTicker(30 * time.Second)
-					defer ticker.Stop()
-
-					for range ticker.C {
-						hb, err := woffSvClient.Heartbeat()
-						if err != nil {
-							log.Printf("Heartbeat failed: %v", err)
-							logger.LogMessage("WARNING", fmt.Sprintf("Heartbeat failed: %v", err))
-						} else {
-							log.Printf("Heartbeat OK (status: %s, timestamp: %s)", hb.Status, hb.Timestamp)
-							logger.LogMessage("DEBUG", fmt.Sprintf("Heartbeat OK: status=%s", hb.Status))
-						}
-					}
-				}()
 			}
 		}
+
+		// WebSocketでバックエンドURL変更を常に監視
+		// （Heartbeat失敗時の再接続に必要）
+		watcher := woffcl.NewBackendWatcher(
+			cfg.WoffClEndpoint,
+			cfg.WoffClSecret,
+			func(newURL string) bool {
+				log.Printf("Backend URL received: %s", newURL)
+				logger.LogMessage("INFO", fmt.Sprintf("Backend URL received: %s", newURL))
+
+				// 新しいURLでクライアントを再作成（Heartbeatで接続確認）
+				if err := setWoffSvClient(newURL); err != nil {
+					log.Printf("Failed to connect to backend: %v", err)
+					logger.LogMessage("WARNING", fmt.Sprintf("Failed to connect to backend: %v", err))
+					return false // 接続失敗、WebSocketを継続して待機
+				}
+
+				log.Printf("Successfully connected to backend: %s", newURL)
+				logger.LogMessage("INFO", fmt.Sprintf("Successfully connected to backend: %s", newURL))
+				return true // 接続成功
+			},
+			func(msg string) {
+				log.Printf("[WebSocket] %s", msg)
+				logger.LogMessage("DEBUG", msg)
+			},
+		)
+		watcher.Start()
+		defer watcher.Stop()
+
+		// 定期的にHeartbeatを送信（30秒間隔）
+		heartbeatTicker = time.NewTicker(30 * time.Second)
+		defer heartbeatTicker.Stop()
+
+		go func() {
+			for range heartbeatTicker.C {
+				client := getWoffSvClient()
+				if client == nil {
+					continue
+				}
+
+				hb, err := client.Heartbeat()
+				if err != nil {
+					log.Printf("Heartbeat failed: %v", err)
+					logger.LogMessage("WARNING", fmt.Sprintf("Heartbeat failed: %v", err))
+				} else {
+					log.Printf("Heartbeat OK (status: %s, timestamp: %s)", hb.Status, hb.Timestamp)
+					logger.LogMessage("DEBUG", fmt.Sprintf("Heartbeat OK: status=%s", hb.Status))
+				}
+			}
+		}()
 	} else {
 		log.Println("woff-cl endpoint or secret not configured, skipping woff-sv integration")
 	}
@@ -275,13 +368,14 @@ func main() {
 			log.Printf("Failed to log read history: %v", err)
 		}
 
-		// woff-svにTimeCardを送信
-		if woffSvClient != nil {
+		// woff-svにTimeCardを送信（スレッドセーフ）
+		client := getWoffSvClient()
+		if client != nil {
 			driverID := int32(0) // 暫定的に0を使用
 			state := "in" // 出勤
 			machineIP := *readerID // Reader IDを使用
 
-			timeCard, err := woffSvClient.CreateTimeCard(driverID, data.CardID, state, machineIP)
+			timeCard, err := client.CreateTimeCard(driverID, data.CardID, state, machineIP)
 			if err != nil {
 				log.Printf("Failed to send time card to woff-sv: %v", err)
 				logger.LogMessage("ERROR", fmt.Sprintf("Failed to send time card to woff-sv: %v", err))
