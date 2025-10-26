@@ -17,9 +17,9 @@ import (
 
 	"menkyo_go/internal/config"
 	"menkyo_go/internal/database"
-	"menkyo_go/internal/license"
 	"menkyo_go/internal/nfc"
-	pb "menkyo_go/proto"
+	"menkyo_go/internal/woffcl"
+	"menkyo_go/internal/woffsv"
 )
 
 var (
@@ -111,7 +111,6 @@ func main() {
 	cfg := config.GetReaderConfig()
 
 	// コマンドラインフラグ（環境変数より優先される）
-	serverAddr := flag.String("server", cfg.ServerAddr, "gRPC server address")
 	dbPath := flag.String("db", cfg.DBPath, "SQLite database path")
 	readerID := flag.String("reader-id", cfg.ReaderID, "Reader ID")
 	flag.Parse()
@@ -126,7 +125,6 @@ func main() {
 
 	log.Printf("Starting license reader v%s (Built: %s)", Version, BuildTime)
 	log.Printf("Reader ID: %s", *readerID)
-	log.Printf("Server address: %s", *serverAddr)
 	log.Printf("Database path: %s", dbFullPath)
 
 	// データベース初期化
@@ -138,17 +136,32 @@ func main() {
 
 	logger.LogMessage("INFO", "License reader started")
 
-	// gRPCクライアント初期化
-	grpcClient, err := license.NewClient(*serverAddr)
-	if err != nil {
-		log.Printf("Warning: Failed to connect to gRPC server: %v", err)
-		logger.LogMessage("WARNING", "Failed to connect to gRPC server")
-		// gRPCサーバーに接続できなくてもローカルログは動作させる
-		grpcClient = nil
+	// woff-cl/woff-svクライアント初期化
+	var woffSvClient *woffsv.AuthClient
+	if cfg.WoffClEndpoint != "" && cfg.WoffClSecret != "" {
+		log.Printf("Fetching backend URL from woff-cl: %s", cfg.WoffClEndpoint)
+		woffClClient := woffcl.NewClient(cfg.WoffClEndpoint, cfg.WoffClSecret)
+		backendURL, err := woffClClient.GetBackendURL()
+		if err != nil {
+			log.Printf("Warning: Failed to get backend URL from woff-cl: %v", err)
+			logger.LogMessage("WARNING", fmt.Sprintf("Failed to get backend URL: %v", err))
+		} else {
+			log.Printf("Backend URL: %s", backendURL)
+			logger.LogMessage("INFO", fmt.Sprintf("Backend URL from woff-cl: %s", backendURL))
+
+			// woff-svクライアント初期化 (FRONTEND_SECRET = WOFF_CL_SECRETを使用)
+			woffSvClient, err = woffsv.NewAuthClient(backendURL, cfg.WoffClSecret)
+			if err != nil {
+				log.Printf("Warning: Failed to connect to woff-sv: %v", err)
+				logger.LogMessage("WARNING", fmt.Sprintf("Failed to connect to woff-sv: %v", err))
+			} else {
+				defer woffSvClient.Close()
+				log.Printf("Connected to woff-sv: %s", backendURL)
+				logger.LogMessage("INFO", "Connected to woff-sv")
+			}
+		}
 	} else {
-		defer grpcClient.Close()
-		log.Printf("Connected to gRPC server: %s", *serverAddr)
-		logger.LogMessage("INFO", "Connected to gRPC server")
+		log.Println("woff-cl endpoint or secret not configured, skipping woff-sv integration")
 	}
 
 	// NFC リーダー初期化（内部ログはログファイルとDBの両方に出力）
@@ -194,26 +207,8 @@ func main() {
 
 	err = licenseReader.MonitorCards(func(data *nfc.LicenseData, err error) {
 		if err != nil {
-			// エラーはDBのみに記録（コンソールには出さない）
+			// エラーをログに記録
 			logger.LogMessage("ERROR", err.Error())
-
-			// エラーログをgRPCサーバーに送信
-			if grpcClient != nil {
-				timestamp := int64(0)
-				if data != nil {
-					timestamp = data.ReadTimestamp.Unix()
-				}
-				logData := &pb.ReadLog{
-					Timestamp:    timestamp,
-					ReaderId:     *readerID,
-					Status:       "error",
-					ErrorMessage: err.Error(),
-				}
-				if data != nil {
-					logData.CardId = data.CardID
-				}
-				grpcClient.PushReadLog(logData)
-			}
 
 			// データベースに記録
 			record := &database.ReadHistoryRecord{
@@ -255,32 +250,21 @@ func main() {
 			log.Printf("Failed to log read history: %v", err)
 		}
 
-		// gRPCサーバーにデータを送信
-		if grpcClient != nil {
-			licenseData := &pb.LicenseData{
-				CardId:        data.CardID,
-				LicenseType:   data.CardType,
-				ExpiryDate:    data.ExpiryDate,
-				ReadTimestamp: data.ReadTimestamp.Unix(),
-				ReaderId:      *readerID,
-			}
+		// woff-svにTimeCardを送信
+		if woffSvClient != nil {
+			driverID := int32(0) // 暫定的に0を使用
+			state := "in" // 出勤
+			machineIP := *readerID // Reader IDを使用
 
-			resp, err := grpcClient.PushLicenseData(licenseData)
+			timeCard, err := woffSvClient.CreateTimeCard(driverID, data.CardID, state, machineIP)
 			if err != nil {
-				log.Printf("Failed to push license data to server: %v", err)
-				logger.LogMessage("ERROR", "Failed to push data to server")
+				log.Printf("Failed to send time card to woff-sv: %v", err)
+				logger.LogMessage("ERROR", fmt.Sprintf("Failed to send time card to woff-sv: %v", err))
 			} else {
-				log.Printf("Data pushed to server (Request ID: %s)", resp.RequestId)
+				log.Printf("Time card sent to woff-sv successfully: id=%d, state=%s", timeCard.Id, timeCard.State)
+				logger.LogMessage("INFO", fmt.Sprintf("Time card sent to woff-sv: id=%d, card_id=%s, state=%s",
+					timeCard.Id, data.CardID, state))
 			}
-
-			// 成功ログを送信
-			logData := &pb.ReadLog{
-				Timestamp: data.ReadTimestamp.Unix(),
-				ReaderId:  *readerID,
-				Status:    "success",
-				CardId:    data.CardID,
-			}
-			grpcClient.PushReadLog(logData)
 		}
 	})
 

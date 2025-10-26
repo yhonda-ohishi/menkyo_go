@@ -12,7 +12,7 @@ import (
 	"menkyo_go/internal/config"
 	"menkyo_go/internal/database"
 	"menkyo_go/internal/license"
-	pb "menkyo_go/proto"
+	pb "menkyo_go/proto/license"
 
 	"google.golang.org/grpc"
 )

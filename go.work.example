@@ -1,0 +1,11 @@
+go 1.24.0
+
+use (
+    .
+    ./db_service
+)
+
+// このファイルを go.work にリネームして使用
+// db_serviceをsubmoduleとして追加した後に有効化:
+//   git submodule add https://github.com/yhonda-ohishi/db_service.git
+//   git submodule update --init --recursive

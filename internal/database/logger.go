@@ -149,6 +149,90 @@ func (l *Logger) LogReadHistory(record *ReadHistoryRecord) error {
 	return nil
 }
 
+// LogEntry ログエントリ
+type LogEntry struct {
+	ID        int64
+	Timestamp time.Time
+	Level     string
+	Message   string
+	ReaderID  string
+}
+
+// GetLogs ログを取得（フィルタ付き）
+func (l *Logger) GetLogs(readerID, level string, startTime, endTime int64, limit int32) ([]*LogEntry, int32, error) {
+	// クエリ構築
+	query := `SELECT id, timestamp, level, message, reader_id FROM logs WHERE 1=1`
+	countQuery := `SELECT COUNT(*) FROM logs WHERE 1=1`
+	args := []interface{}{}
+
+	if readerID != "" {
+		query += ` AND reader_id = ?`
+		countQuery += ` AND reader_id = ?`
+		args = append(args, readerID)
+	}
+
+	if level != "" {
+		query += ` AND level = ?`
+		countQuery += ` AND level = ?`
+		args = append(args, level)
+	}
+
+	if startTime > 0 {
+		query += ` AND strftime('%s', timestamp) >= ?`
+		countQuery += ` AND strftime('%s', timestamp) >= ?`
+		args = append(args, startTime)
+	}
+
+	if endTime > 0 {
+		query += ` AND strftime('%s', timestamp) <= ?`
+		countQuery += ` AND strftime('%s', timestamp) <= ?`
+		args = append(args, endTime)
+	}
+
+	// 総件数を取得
+	var totalCount int32
+	err := l.db.QueryRow(countQuery, args...).Scan(&totalCount)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to count logs: %w", err)
+	}
+
+	// ログを取得
+	query += ` ORDER BY timestamp DESC`
+	if limit > 0 {
+		query += ` LIMIT ?`
+		args = append(args, limit)
+	} else {
+		args = append(args, 100) // デフォルト100件
+	}
+
+	rows, err := l.db.Query(query, args...)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to query logs: %w", err)
+	}
+	defer rows.Close()
+
+	var logs []*LogEntry
+
+	for rows.Next() {
+		entry := &LogEntry{}
+		var timestamp string
+		var readerID sql.NullString
+
+		if err := rows.Scan(&entry.ID, &timestamp, &entry.Level, &entry.Message, &readerID); err != nil {
+			return nil, 0, fmt.Errorf("failed to scan row: %w", err)
+		}
+
+		entry.Timestamp, _ = time.Parse("2006-01-02 15:04:05", timestamp)
+		if readerID.Valid {
+			entry.ReaderID = readerID.String
+		}
+
+		logs = append(logs, entry)
+	}
+
+	return logs, totalCount, nil
+}
+
 // GetRecentLogs 最近のログを取得
 func (l *Logger) GetRecentLogs(limit int) ([]map[string]interface{}, error) {
 	query := `SELECT id, timestamp, level, message, reader_id, card_id
@@ -194,17 +278,58 @@ func (l *Logger) GetRecentLogs(limit int) ([]map[string]interface{}, error) {
 	return logs, nil
 }
 
-// GetReadHistory 読み取り履歴を取得
-func (l *Logger) GetReadHistory(limit int) ([]*ReadHistoryRecord, error) {
+// GetReadHistory 読み取り履歴を取得（フィルタ付き）
+func (l *Logger) GetReadHistory(readerID, status string, startTime, endTime int64, limit int32) ([]*ReadHistoryRecord, int32, error) {
+	// クエリ構築
 	query := `SELECT id, timestamp, reader_id, card_id, card_type, atr,
 		expiry_date, remain_count, felica_uid, status, error_message
-		FROM read_history
-		ORDER BY timestamp DESC
-		LIMIT ?`
+		FROM read_history WHERE 1=1`
+	countQuery := `SELECT COUNT(*) FROM read_history WHERE 1=1`
+	args := []interface{}{}
 
-	rows, err := l.db.Query(query, limit)
+	if readerID != "" {
+		query += ` AND reader_id = ?`
+		countQuery += ` AND reader_id = ?`
+		args = append(args, readerID)
+	}
+
+	if status != "" {
+		query += ` AND status = ?`
+		countQuery += ` AND status = ?`
+		args = append(args, status)
+	}
+
+	if startTime > 0 {
+		query += ` AND strftime('%s', timestamp) >= ?`
+		countQuery += ` AND strftime('%s', timestamp) >= ?`
+		args = append(args, startTime)
+	}
+
+	if endTime > 0 {
+		query += ` AND strftime('%s', timestamp) <= ?`
+		countQuery += ` AND strftime('%s', timestamp) <= ?`
+		args = append(args, endTime)
+	}
+
+	// 総件数を取得
+	var totalCount int32
+	err := l.db.QueryRow(countQuery, args...).Scan(&totalCount)
 	if err != nil {
-		return nil, fmt.Errorf("failed to query read history: %w", err)
+		return nil, 0, fmt.Errorf("failed to count read history: %w", err)
+	}
+
+	// 履歴を取得
+	query += ` ORDER BY timestamp DESC`
+	if limit > 0 {
+		query += ` LIMIT ?`
+		args = append(args, limit)
+	} else {
+		args = append(args, 100) // デフォルト100件
+	}
+
+	rows, err := l.db.Query(query, args...)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to query read history: %w", err)
 	}
 	defer rows.Close()
 
@@ -228,7 +353,7 @@ func (l *Logger) GetReadHistory(limit int) ([]*ReadHistoryRecord, error) {
 			&record.Status,
 			&errorMessage,
 		); err != nil {
-			return nil, fmt.Errorf("failed to scan row: %w", err)
+			return nil, 0, fmt.Errorf("failed to scan row: %w", err)
 		}
 
 		record.Timestamp, _ = time.Parse("2006-01-02 15:04:05", timestamp)
@@ -249,5 +374,5 @@ func (l *Logger) GetReadHistory(limit int) ([]*ReadHistoryRecord, error) {
 		records = append(records, record)
 	}
 
-	return records, nil
+	return records, totalCount, nil
 }

@@ -16,9 +16,12 @@ type ServerConfig struct {
 
 // ReaderConfig リーダー設定
 type ReaderConfig struct {
-	ServerAddr string
-	DBPath     string
-	ReaderID   string
+	ServerAddr     string
+	DBPath         string
+	ReaderID       string
+	MySQLDSN       string // MySQL接続文字列
+	WoffClEndpoint string // woff-clエンドポイント
+	WoffClSecret   string // woff-clシークレット
 }
 
 // LoadEnv 環境変数を読み込む
@@ -59,6 +62,7 @@ func GetReaderConfig() *ReaderConfig {
 		ServerAddr: "localhost:50051",
 		DBPath:     "license_reader.db",
 		ReaderID:   "default",
+		MySQLDSN:   "", // デフォルトは空（環境変数から設定）
 	}
 
 	// 環境変数から取得
@@ -72,6 +76,18 @@ func GetReaderConfig() *ReaderConfig {
 
 	if readerID := os.Getenv("READER_ID"); readerID != "" {
 		config.ReaderID = readerID
+	}
+
+	if mysqlDSN := os.Getenv("MYSQL_DSN"); mysqlDSN != "" {
+		config.MySQLDSN = mysqlDSN
+	}
+
+	if woffClEndpoint := os.Getenv("WOFF_CL_ENDPOINT"); woffClEndpoint != "" {
+		config.WoffClEndpoint = woffClEndpoint
+	}
+
+	if woffClSecret := os.Getenv("WOFF_CL_SECRET"); woffClSecret != "" {
+		config.WoffClSecret = woffClSecret
 	}
 
 	return config

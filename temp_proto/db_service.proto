@@ -1,0 +1,1068 @@
+syntax = "proto3";
+
+package db_service;
+
+option go_package = "github.com/yhonda-ohishi/db_service/src/proto";
+
+// DTakoUriageKeihiサービス - 経費精算データ管理
+service db_DTakoUriageKeihiService {
+  // 経費精算データ作成
+  rpc Create(db_CreateDTakoUriageKeihiRequest) returns (db_DTakoUriageKeihiResponse) {
+  }
+  // 経費精算データ取得
+  rpc Get(db_GetDTakoUriageKeihiRequest) returns (db_DTakoUriageKeihiResponse) {
+  }
+  // 経費精算データ更新
+  rpc Update(db_UpdateDTakoUriageKeihiRequest) returns (db_DTakoUriageKeihiResponse) {
+  }
+  // 経費精算データ削除
+  rpc Delete(db_DeleteDTakoUriageKeihiRequest) returns (db_Empty) {
+  }
+  // 経費精算データ一覧取得
+  rpc List(db_ListDTakoUriageKeihiRequest) returns (db_ListDTakoUriageKeihiResponse) {
+  }
+}
+
+// ETCMeisaiサービス - ETC明細データ管理
+service db_ETCMeisaiService {
+  // ETC明細データ作成
+  rpc Create(db_CreateETCMeisaiRequest) returns (db_ETCMeisaiResponse) {
+  }
+  // ETC明細データ取得
+  rpc Get(db_GetETCMeisaiRequest) returns (db_ETCMeisaiResponse) {
+  }
+  // ETC明細データ更新
+  rpc Update(db_UpdateETCMeisaiRequest) returns (db_ETCMeisaiResponse) {
+  }
+  // ETC明細データ削除
+  rpc Delete(db_DeleteETCMeisaiRequest) returns (db_Empty) {
+  }
+  // ETC明細データ一覧取得
+  rpc List(db_ListETCMeisaiRequest) returns (db_ListETCMeisaiResponse) {
+  }
+}
+
+// DTakoFerryRowsサービス - フェリー運行データ管理
+service db_DTakoFerryRowsService {
+  // フェリー運行データ作成
+  rpc Create(db_CreateDTakoFerryRowsRequest) returns (db_DTakoFerryRowsResponse) {
+  }
+  // フェリー運行データ取得
+  rpc Get(db_GetDTakoFerryRowsRequest) returns (db_DTakoFerryRowsResponse) {
+  }
+  // フェリー運行データ更新
+  rpc Update(db_UpdateDTakoFerryRowsRequest) returns (db_DTakoFerryRowsResponse) {
+  }
+  // フェリー運行データ削除
+  rpc Delete(db_DeleteDTakoFerryRowsRequest) returns (db_Empty) {
+  }
+  // フェリー運行データ一覧取得
+  rpc List(db_ListDTakoFerryRowsRequest) returns (db_ListDTakoFerryRowsResponse) {
+  }
+}
+
+// ETCMeisaiMappingサービス - ETC明細とDTakoRowsのマッピング管理
+service db_ETCMeisaiMappingService {
+  // マッピング作成
+  rpc Create(db_CreateETCMeisaiMappingRequest) returns (db_ETCMeisaiMappingResponse) {
+  }
+  // マッピング取得
+  rpc Get(db_GetETCMeisaiMappingRequest) returns (db_ETCMeisaiMappingResponse) {
+  }
+  // マッピング更新
+  rpc Update(db_UpdateETCMeisaiMappingRequest) returns (db_ETCMeisaiMappingResponse) {
+  }
+  // マッピング削除
+  rpc Delete(db_DeleteETCMeisaiMappingRequest) returns (db_Empty) {
+  }
+  // マッピング一覧取得
+  rpc List(db_ListETCMeisaiMappingRequest) returns (db_ListETCMeisaiMappingResponse) {
+  }
+  // ハッシュからDTakoRowIDを取得
+  rpc GetDTakoRowIDByHash(db_GetDTakoRowIDByHashRequest) returns (db_GetDTakoRowIDByHashResponse) {
+  }
+}
+
+// 経費精算データ
+message db_DTakoUriageKeihi {
+  string srch_id = 1;
+  string datetime = 2;  // RFC3339形式
+  int32 keihi_c = 3;
+  double price = 4;
+  optional double km = 5;
+  string dtako_row_id = 6;
+  string dtako_row_id_r = 7;
+  optional string start_srch_id = 8;
+  optional string start_srch_time = 9;
+  optional string start_srch_place = 10;
+  optional string start_srch_tokui = 11;
+  optional string end_srch_id = 12;
+  optional string end_srch_time = 13;
+  optional string end_srch_place = 14;
+  optional bool manual = 15;
+}
+
+// ETC明細データ
+message db_ETCMeisai {
+  int64 id = 1;
+  optional string date_fr = 2;
+  string date_to = 3;  // RFC3339形式推奨 (例: 2025-10-18T00:00:00Z)
+  string date_to_date = 4;  // YYYY-MM-DD形式 (例: 2025-10-18)
+  optional string ic_fr = 5;  // 入口IC不明の場合は省略可（実データの22.3%が空）
+  string ic_to = 6;  // 出口IC（必須）
+  optional int32 price_bf = 7;
+  optional int32 descount = 8;
+  int32 price = 9;
+  int32 shashu = 10;
+  optional int32 car_id_num = 11;
+  string etc_num = 12;
+  optional string detail = 13;
+  string hash = 14;
+}
+
+// フェリー運行データ
+message db_DTakoFerryRows {
+  int32 id = 1;
+  string unko_no = 2;  // 運行NO
+  string unko_date = 3;  // 運行日
+  string yomitori_date = 4;  // 読取日
+  int32 jigyosho_cd = 5;  // 事業所CD
+  string jigyosho_name = 6;  // 事業所名
+  int32 sharyo_cd = 7;  // 車輌CD
+  string sharyo_name = 8;  // 車輌名
+  int32 jomuin_cd1 = 9;  // 乗務員CD1
+  string jomuin_name1 = 10;  // 乗務員名１
+  int32 taisho_jomuin_kbn = 11;  // 対象乗務員区分
+  string kaishi_datetime = 12;  // 開始日時
+  string shuryo_datetime = 13;  // 終了日時
+  int32 ferry_company_cd = 14;  // フェリー会社CD
+  string ferry_company_name = 15;  // フェリー会社名
+  int32 noriba_cd = 16;  // 乗場CD
+  string noriba_name = 17;  // 乗場名
+  string bin = 18;  // 便
+  int32 oriba_cd = 19;  // 降場CD
+  string oriba_name = 20;  // 降場名
+  int32 seisan_kbn = 21;  // 精算区分
+  string seisan_kbn_name = 22;  // 精算区分名
+  int32 hyojun_ryokin = 23;  // 標準料金
+  int32 keiyaku_ryokin = 24;  // 契約料金
+  int32 koso_shashu_kbn = 25;  // 航送車種区分
+  string koso_shashu_kbn_name = 26;  // 航送車種区分名
+  int32 minashi_kyori = 27;  // 見なし距離
+  optional string ferry_srch = 28;  // ferry_srch
+}
+
+// リクエスト/レスポンスメッセージ
+
+// DTakoUriageKeihi用
+message db_CreateDTakoUriageKeihiRequest {
+  db_DTakoUriageKeihi dtako_uriage_keihi = 1;
+}
+
+message db_GetDTakoUriageKeihiRequest {
+  string srch_id = 1;
+  string datetime = 2;
+  int32 keihi_c = 3;
+}
+
+message db_UpdateDTakoUriageKeihiRequest {
+  db_DTakoUriageKeihi dtako_uriage_keihi = 1;
+}
+
+message db_DeleteDTakoUriageKeihiRequest {
+  string srch_id = 1;
+  string datetime = 2;
+  int32 keihi_c = 3;
+}
+
+message db_ListDTakoUriageKeihiRequest {
+  optional string dtako_row_id = 1;
+  optional string start_date = 2;
+  optional string end_date = 3;
+  int32 limit = 4;
+  int32 offset = 5;
+}
+
+message db_DTakoUriageKeihiResponse {
+  db_DTakoUriageKeihi dtako_uriage_keihi = 1;
+}
+
+message db_ListDTakoUriageKeihiResponse {
+  repeated db_DTakoUriageKeihi items = 1;
+  int32 total_count = 2;
+}
+
+// ETCMeisai用
+message db_CreateETCMeisaiRequest {
+  db_ETCMeisai etc_meisai = 1;
+}
+
+message db_GetETCMeisaiRequest {
+  int64 id = 1;
+}
+
+message db_UpdateETCMeisaiRequest {
+  db_ETCMeisai etc_meisai = 1;
+}
+
+message db_DeleteETCMeisaiRequest {
+  int64 id = 1;
+}
+
+message db_ListETCMeisaiRequest {
+  optional string hash = 1;
+  optional string start_date = 2;
+  optional string end_date = 3;
+  int32 limit = 4;
+  int32 offset = 5;
+}
+
+message db_ETCMeisaiResponse {
+  db_ETCMeisai etc_meisai = 1;
+}
+
+message db_ListETCMeisaiResponse {
+  repeated db_ETCMeisai items = 1;
+  int32 total_count = 2;
+}
+
+// DTakoFerryRows用
+message db_CreateDTakoFerryRowsRequest {
+  db_DTakoFerryRows dtako_ferry_rows = 1;
+}
+
+message db_GetDTakoFerryRowsRequest {
+  int32 id = 1;
+}
+
+message db_UpdateDTakoFerryRowsRequest {
+  db_DTakoFerryRows dtako_ferry_rows = 1;
+}
+
+message db_DeleteDTakoFerryRowsRequest {
+  int32 id = 1;
+}
+
+message db_ListDTakoFerryRowsRequest {
+  optional string unko_no = 1;
+  optional string start_date = 2;
+  optional string end_date = 3;
+  int32 limit = 4;
+  int32 offset = 5;
+}
+
+message db_DTakoFerryRowsResponse {
+  db_DTakoFerryRows dtako_ferry_rows = 1;
+}
+
+message db_ListDTakoFerryRowsResponse {
+  repeated db_DTakoFerryRows items = 1;
+  int32 total_count = 2;
+}
+
+// ETC明細マッピングデータ
+message db_ETCMeisaiMapping {
+  int64 id = 1;
+  string etc_meisai_hash = 2;
+  string dtako_row_id = 3;
+  string created_at = 4;
+  string updated_at = 5;
+  string created_by = 6;
+  optional string notes = 7;
+}
+
+// ETCMeisaiMapping用リクエスト/レスポンス
+message db_CreateETCMeisaiMappingRequest {
+  db_ETCMeisaiMapping etc_meisai_mapping = 1;
+}
+
+message db_GetETCMeisaiMappingRequest {
+  int64 id = 1;
+}
+
+message db_UpdateETCMeisaiMappingRequest {
+  db_ETCMeisaiMapping etc_meisai_mapping = 1;
+}
+
+message db_DeleteETCMeisaiMappingRequest {
+  int64 id = 1;
+}
+
+message db_ListETCMeisaiMappingRequest {
+  optional string etc_meisai_hash = 1;
+  optional string dtako_row_id = 2;
+  int32 limit = 3;
+  int32 offset = 4;
+}
+
+message db_ETCMeisaiMappingResponse {
+  db_ETCMeisaiMapping etc_meisai_mapping = 1;
+}
+
+message db_ListETCMeisaiMappingResponse {
+  repeated db_ETCMeisaiMapping items = 1;
+  int32 total_count = 2;
+}
+
+message db_GetDTakoRowIDByHashRequest {
+  string etc_meisai_hash = 1;
+}
+
+message db_GetDTakoRowIDByHashResponse {
+  repeated string dtako_row_ids = 1;
+}
+
+// DTakoCarsサービス - 車輌マスタ管理（本番DB、読み取り専用）
+service db_DTakoCarsService {
+  // 車輌情報取得
+  rpc Get(db_GetDTakoCarsRequest) returns (db_DTakoCarsResponse) {
+  }
+  // 車輌情報一覧取得
+  rpc List(db_ListDTakoCarsRequest) returns (db_ListDTakoCarsResponse) {
+  }
+  // 車輌CDで車輌情報取得
+  rpc GetByCarCode(db_GetDTakoCarsByCarCodeRequest) returns (db_DTakoCarsResponse) {
+  }
+}
+
+// DTakoEventsサービス - イベント情報管理（本番DB、読み取り専用）
+service db_DTakoEventsService {
+  // イベント情報取得
+  rpc Get(db_GetDTakoEventsRequest) returns (db_DTakoEventsResponse) {
+  }
+  // イベント情報一覧取得
+  rpc List(db_ListDTakoEventsRequest) returns (db_ListDTakoEventsResponse) {
+  }
+  // 運行NOでイベント情報取得
+  rpc GetByOperationNo(db_GetDTakoEventsByOperationNoRequest) returns (db_ListDTakoEventsResponse) {
+  }
+}
+
+// DTakoRowsサービス - 運行データ管理（本番DB、読み取り専用）
+service db_DTakoRowsService {
+  // 運行データ取得
+  rpc Get(db_GetDTakoRowsRequest) returns (db_DTakoRowsResponse) {
+  }
+  // 運行データ一覧取得
+  rpc List(db_ListDTakoRowsRequest) returns (db_ListDTakoRowsResponse) {
+  }
+  // 運行NOで運行データ取得
+  rpc GetByOperationNo(db_GetDTakoRowsByOperationNoRequest) returns (db_ListDTakoRowsResponse) {
+  }
+}
+
+// ETCNumサービス - ETCカード番号マスタ管理（本番DB、読み取り専用）
+service db_ETCNumService {
+  // ETCカード番号一覧取得
+  rpc List(db_ListETCNumRequest) returns (db_ListETCNumResponse) {
+  }
+  // ETCカード番号で取得
+  rpc GetByETCCardNum(db_GetETCNumByETCCardNumRequest) returns (db_ListETCNumResponse) {
+  }
+  // 車輌IDで取得
+  rpc GetByCarID(db_GetETCNumByCarIDRequest) returns (db_ListETCNumResponse) {
+  }
+}
+
+// DTakoFerryRowsProdサービス - フェリー運行データ管理（本番DB、読み取り専用）
+service db_DTakoFerryRowsProdService {
+  // フェリー運行データ取得
+  rpc Get(db_GetDTakoFerryRowsProdRequest) returns (db_DTakoFerryRowsProdResponse) {
+  }
+  // フェリー運行データ一覧取得
+  rpc List(db_ListDTakoFerryRowsProdRequest) returns (db_ListDTakoFerryRowsProdResponse) {
+  }
+  // 運行NOでフェリー運行データ取得
+  rpc GetByUnkoNo(db_GetDTakoFerryRowsProdByUnkoNoRequest) returns (db_ListDTakoFerryRowsProdResponse) {
+  }
+}
+
+// 車輌マスタデータ（本番DB）
+message db_DTakoCars {
+  int32 id = 1;
+  string car_code = 2;
+  string car_cc = 3;
+  string car_name = 4;
+  int32 belong_office_code = 5;
+  int32 highway_car_type = 6;
+  int32 ferry_car_type = 7;
+  int32 evaluation_class_code = 8;
+  int32 idling_type = 9;
+  int32 max_load_weight_kg = 10;
+  int32 car_class1 = 11;
+  int32 car_class2 = 12;
+  int32 car_class3 = 13;
+  int32 car_class4 = 14;
+  int32 car_class5 = 15;
+  int32 operation_type = 16;
+}
+
+// イベント情報データ（本番DB）
+message db_DTakoEvents {
+  int64 id = 1;
+  string operation_no = 2;
+  string read_date = 3;  // RFC3339形式
+  int32 car_code = 4;
+  string car_cc = 5;
+  int32 target_driver_type = 6;
+  int32 driver_code1 = 7;
+  int32 target_driver_code = 8;
+  string start_datetime = 9;  // RFC3339形式
+  string end_datetime = 10;  // RFC3339形式
+  optional int32 event_code = 11;
+  string event_name = 12;
+  double start_mileage = 13;
+  double end_mileage = 14;
+  int32 section_time = 15;
+  double section_distance = 16;
+  optional int32 start_city_code = 17;
+  string start_city_name = 18;
+  optional int32 end_city_code = 19;
+  string end_city_name = 20;
+  optional int32 start_place_code = 21;
+  string start_place_name = 22;
+  optional int32 end_place_code = 23;
+  string end_place_name = 24;
+  optional int32 start_gps_valid = 25;
+  optional int64 start_gps_latitude = 26;
+  optional int64 start_gps_longitude = 27;
+  optional int32 end_gps_valid = 28;
+  optional int64 end_gps_latitude = 29;
+  optional int64 end_gps_longitude = 30;
+}
+
+// 運行データ（本番DB）
+message db_DTakoRows {
+  string id = 1;
+  string operation_no = 2;
+  string read_date = 3;  // RFC3339形式
+  string operation_date = 4;  // RFC3339形式
+  int32 car_code = 5;
+  string car_cc = 6;
+  optional int32 driver_code1 = 7;
+  int32 target_driver_type = 8;
+  int32 target_driver_code = 9;
+  string start_work_datetime = 10;  // RFC3339形式
+  string end_work_datetime = 11;  // RFC3339形式
+  string departure_datetime = 12;  // RFC3339形式
+  string return_datetime = 13;  // RFC3339形式
+  double departure_meter = 14;
+  double return_meter = 15;
+  double total_distance = 16;
+  optional double loaded_distance = 17;
+  optional string destination_city_name = 18;
+  optional string destination_place_name = 19;
+  int32 general_road_drive_time = 20;
+  int32 highway_drive_time = 21;
+  int32 bypass_drive_time = 22;
+  int32 loaded_drive_time = 23;
+  int32 empty_drive_time = 24;
+  int32 work1_time = 25;
+  int32 work2_time = 26;
+  int32 work3_time = 27;
+  int32 work4_time = 28;
+  double status1_distance = 29;
+  int32 status1_time = 30;
+}
+
+// ETCカード番号データ（本番DB）
+message db_ETCNum {
+  string etc_card_num = 1;
+  string car_id = 2;
+  optional string start_date_time = 3;  // RFC3339形式
+  optional string due_date_time = 4;  // RFC3339形式
+  optional bool to_change = 5;
+}
+
+// DTakoCars用リクエスト/レスポンス
+message db_GetDTakoCarsRequest {
+  int32 id = 1;
+}
+
+message db_GetDTakoCarsByCarCodeRequest {
+  string car_code = 1;
+}
+
+message db_ListDTakoCarsRequest {
+  int32 limit = 1;
+  int32 offset = 2;
+}
+
+message db_DTakoCarsResponse {
+  db_DTakoCars dtako_cars = 1;
+}
+
+message db_ListDTakoCarsResponse {
+  repeated db_DTakoCars items = 1;
+  int32 total_count = 2;
+}
+
+// DTakoEvents用リクエスト/レスポンス
+message db_GetDTakoEventsRequest {
+  int64 id = 1;
+}
+
+message db_GetDTakoEventsByOperationNoRequest {
+  string operation_no = 1;
+}
+
+message db_ListDTakoEventsRequest {
+  int32 limit = 1;
+  int32 offset = 2;
+  optional string order_by = 3;  // 例: "開始日時 DESC", "id ASC"
+}
+
+message db_DTakoEventsResponse {
+  db_DTakoEvents dtako_events = 1;
+}
+
+message db_ListDTakoEventsResponse {
+  repeated db_DTakoEvents items = 1;
+  int32 total_count = 2;
+}
+
+// DTakoRows用リクエスト/レスポンス
+message db_GetDTakoRowsRequest {
+  string id = 1;
+}
+
+message db_GetDTakoRowsByOperationNoRequest {
+  string operation_no = 1;
+}
+
+message db_ListDTakoRowsRequest {
+  int32 limit = 1;
+  int32 offset = 2;
+  optional string order_by = 3;  // 例: "読取日 DESC", "id ASC"
+}
+
+message db_DTakoRowsResponse {
+  db_DTakoRows dtako_rows = 1;
+}
+
+message db_ListDTakoRowsResponse {
+  repeated db_DTakoRows items = 1;
+  int32 total_count = 2;
+}
+
+// ETCNum用リクエスト/レスポンス
+message db_GetETCNumByETCCardNumRequest {
+  string etc_card_num = 1;
+}
+
+message db_GetETCNumByCarIDRequest {
+  string car_id = 1;
+}
+
+message db_ListETCNumRequest {
+  int32 limit = 1;
+  int32 offset = 2;
+}
+
+message db_ListETCNumResponse {
+  repeated db_ETCNum items = 1;
+  int32 total_count = 2;
+}
+
+// db_DTakoFerryRowsProd（本番DB）データ
+message db_DTakoFerryRowsProd {
+  int32 id = 1;
+  string unko_no = 2;
+  string unko_date = 3;  // YYYY-MM-DD形式
+  string yomitori_date = 4;  // YYYY-MM-DD形式
+  int32 jigyosho_cd = 5;
+  string jigyosho_name = 6;
+  int32 sharyo_cd = 7;
+  string sharyo_name = 8;
+  int32 jomuin_cd1 = 9;
+  string jomuin_name1 = 10;
+  int32 taisho_jomuin_kbn = 11;
+  string kaishi_datetime = 12;  // RFC3339形式
+  string shuryo_datetime = 13;  // RFC3339形式
+  int32 ferry_company_cd = 14;
+  string ferry_company_name = 15;
+  int32 noriba_cd = 16;
+  string noriba_name = 17;
+  string bin = 18;
+  int32 oriba_cd = 19;
+  string oriba_name = 20;
+  int32 seisan_kbn = 21;
+  string seisan_kbn_name = 22;
+  int32 hyojun_ryokin = 23;
+  int32 keiyaku_ryokin = 24;
+  int32 koso_shashu_kbn = 25;
+  string koso_shashu_kbn_name = 26;
+  int32 minashi_kyori = 27;
+  optional string ferry_srch = 28;
+}
+
+// DTakoFerryRowsProd用リクエスト/レスポンス
+message db_GetDTakoFerryRowsProdRequest {
+  int32 id = 1;
+}
+
+message db_GetDTakoFerryRowsProdByUnkoNoRequest {
+  string unko_no = 1;
+}
+
+message db_ListDTakoFerryRowsProdRequest {
+  int32 limit = 1;
+  int32 offset = 2;
+}
+
+message db_DTakoFerryRowsProdResponse {
+  db_DTakoFerryRowsProd dtako_ferry_rows = 1;
+}
+
+message db_ListDTakoFerryRowsProdResponse {
+  repeated db_DTakoFerryRowsProd items = 1;
+  int32 total_count = 2;
+}
+
+// CarsService - 車両マスタ管理（本番DB、読み取り専用）
+service db_CarsService {
+  // 車両情報取得
+  rpc Get(db_GetCarsRequest) returns (db_CarsResponse) {
+  }
+  // 車両情報一覧取得
+  rpc List(db_ListCarsRequest) returns (db_ListCarsResponse) {
+  }
+  // 部門コードで車両情報取得
+  rpc GetByBumonCodeID(db_GetCarsByBumonCodeIDRequest) returns (db_ListCarsResponse) {
+  }
+}
+
+// DriversService - ドライバーマスタ管理（本番DB、読み取り専用）
+service db_DriversService {
+  // ドライバー情報取得
+  rpc Get(db_GetDriversRequest) returns (db_DriversResponse) {
+  }
+  // ドライバー情報一覧取得
+  rpc List(db_ListDriversRequest) returns (db_ListDriversResponse) {
+  }
+  // 部門コードでドライバー情報取得
+  rpc GetByBumon(db_GetDriversByBumonRequest) returns (db_ListDriversResponse) {
+  }
+}
+
+// db_Cars メッセージ
+message db_Cars {
+  string id = 1;
+  int32 id4 = 2;
+  optional string name = 3;
+  optional string name_r = 4;
+  optional string shashu = 5;
+  optional double sekisai = 6;
+  optional double youseki = 7;
+  optional string reg_date = 8;  // RFC3339形式
+  optional string next_inspect_date = 9;  // RFC3339形式
+  optional string parch_date = 10;  // RFC3339形式
+  optional string scrap_date = 11;  // RFC3339形式
+  optional string bumon_code_id = 12;
+  optional int32 driver_id = 13;
+  optional int32 etc = 14;
+  int32 dai1 = 15;
+  int32 chu1 = 16;
+  int32 sho1 = 17;
+  int32 dai2 = 18;
+  int32 chu2 = 19;
+  int32 sho2 = 20;
+  optional string daichusho1 = 21;
+  optional string daichusho2 = 22;
+}
+
+// db_Drivers メッセージ
+message db_Drivers {
+  int32 id = 1;
+  optional string name = 2;
+  optional string shain_r = 3;
+  string bumon = 4;
+  optional string join_date = 5;  // RFC3339形式
+  optional string retire_date = 6;  // RFC3339形式
+  optional string bunrui1 = 7;
+  optional string bunrui2 = 8;
+  optional int32 kubun = 9;
+  int32 kinmu_taikei = 10;
+}
+
+// Cars用リクエスト/レスポンス
+message db_GetCarsRequest {
+  string id = 1;
+}
+
+message db_GetCarsByBumonCodeIDRequest {
+  string bumon_code_id = 1;
+}
+
+message db_ListCarsRequest {
+  int32 limit = 1;
+  int32 offset = 2;
+  optional string order_by = 3;  // 例: "id ASC", "name DESC"
+}
+
+message db_CarsResponse {
+  db_Cars cars = 1;
+}
+
+message db_ListCarsResponse {
+  repeated db_Cars items = 1;
+  int32 total_count = 2;
+}
+
+// Drivers用リクエスト/レスポンス
+message db_GetDriversRequest {
+  int32 id = 1;
+}
+
+message db_GetDriversByBumonRequest {
+  string bumon = 1;
+}
+
+message db_ListDriversRequest {
+  int32 limit = 1;
+  int32 offset = 2;
+  optional string order_by = 3;  // 例: "id ASC", "name DESC"
+}
+
+message db_DriversResponse {
+  db_Drivers drivers = 1;
+}
+
+message db_ListDriversResponse {
+  repeated db_Drivers items = 1;
+  int32 total_count = 2;
+}
+
+// UntenNippoMeisaiService - 運転日報明細管理（SQL Server、読み取り専用）
+service db_UntenNippoMeisaiService {
+  rpc Get(db_GetUntenNippoMeisaiRequest) returns (db_UntenNippoMeisaiResponse) {
+  }
+  rpc List(db_ListUntenNippoMeisaiRequest) returns (db_ListUntenNippoMeisaiResponse) {
+  }
+  rpc GetBySharyoC(db_GetUntenNippoMeisaiBySharyoCRequest) returns (db_ListUntenNippoMeisaiResponse) {
+  }
+  rpc GetByDateRange(db_GetUntenNippoMeisaiByDateRangeRequest) returns (db_ListUntenNippoMeisaiResponse) {
+  }
+}
+
+// ShainMasterService - 社員マスタ管理（SQL Server、読み取り専用）
+service db_ShainMasterService {
+  rpc Get(db_GetShainMasterRequest) returns (db_ShainMasterResponse) {
+  }
+  rpc List(db_ListShainMasterRequest) returns (db_ListShainMasterResponse) {
+  }
+  rpc GetByBumonC(db_GetShainMasterByBumonCRequest) returns (db_ListShainMasterResponse) {
+  }
+}
+
+// ChiikiMasterService - 地域マスタ管理（SQL Server、読み取り専用）
+service db_ChiikiMasterService {
+  rpc Get(db_GetChiikiMasterRequest) returns (db_ChiikiMasterResponse) {
+  }
+  rpc List(db_ListChiikiMasterRequest) returns (db_ListChiikiMasterResponse) {
+  }
+}
+
+// ChikuMasterService - 地区マスタ管理（SQL Server、読み取り専用）
+service db_ChikuMasterService {
+  rpc Get(db_GetChikuMasterRequest) returns (db_ChikuMasterResponse) {
+  }
+  rpc List(db_ListChikuMasterRequest) returns (db_ListChikuMasterResponse) {
+  }
+  rpc GetByChiikiC(db_GetChikuMasterByChiikiCRequest) returns (db_ListChikuMasterResponse) {
+  }
+}
+
+// db_UntenNippoMeisai メッセージ（106カラム全て）
+message db_UntenNippoMeisai {
+  string nippo_k = 1;
+  optional string unko_nengappi = 2;
+  string haisha_k = 3;
+  string sharyo_c = 4;
+  string sharyo_h = 5;
+  string untenshu_c = 6;
+  string yoshasaki_c = 7;
+  string yoshasaki_h = 8;
+  string joshu1 = 9;
+  string joshu2 = 10;
+  optional string nyuryoku_nengappi = 11;
+  optional string shokai_nengappi = 12;
+  string nyuryoku_tanto_c = 13;
+  optional string juchu_nengappi = 14;
+  string kanri_nengappi = 15;
+  int32 kanri_c = 16;
+  optional string tsumikomi_nengappi = 17;
+  optional string nonin_nengappi = 18;
+  optional string tsumoi_k = 19;
+  string shashu_c = 20;
+  string juchu_bumon = 21;
+  string kado_bumon = 22;
+  string uriage_k = 23;
+  string uriage_shubeki_c = 24;
+  string seikyu_k = 25;
+  optional string denpyo_no = 26;
+  string tokuisaki_c = 27;
+  string tokuisaki_h = 28;
+  string hatchi_c = 29;
+  optional string hatchi_n = 30;
+  string chakuchi_c = 31;
+  optional string chakuchi_n = 32;
+  string hinmei_c = 33;
+  string hinmei_h = 34;
+  optional string hinmei_n = 35;
+  double soko_km = 36;
+  double jissha_km = 37;
+  double seikyu_soko_km = 38;
+  double seikyu_jissha_km = 39;
+  double suryo = 40;
+  optional string tani = 41;
+  double ton_su = 42;
+  double tanka = 43;
+  int32 kingaku = 44;
+  int32 nebiki = 45;
+  int32 warimashi = 46;
+  int32 jippi = 47;
+  double yosha_tanka = 48;
+  int32 yosha_kingaku = 49;
+  int32 yosha_nebiki = 50;
+  int32 yosha_warimashi = 51;
+  int32 yosha_jippi = 52;
+  string kakutei_k = 53;
+  optional string biko = 54;
+  optional string uriage_nengappi = 55;
+  optional string shiharai_nengappi = 56;
+  optional string nyukin_yoteibi = 57;
+  optional string shiharai_yoteibi = 58;
+  int32 shohizei = 59;
+  int32 yosha_shohizei = 60;
+  int32 zeigaku = 61;
+  int32 warimashi_zeigaku = 62;
+  int32 jippi_zeigaku = 63;
+  int32 yosha_zeigaku = 64;
+  int32 yosha_warimashi_zeigaku = 65;
+  int32 yosha_jippi_zeigaku = 66;
+  int32 zeinuki_kingaku = 67;
+  int32 zeinuki_warimashi = 68;
+  int32 zeinuki_jippi = 69;
+  int32 zeinuki_yosha_kingaku = 70;
+  int32 zeinuki_yosha_warimashi = 71;
+  int32 zeinuki_yosha_jippi = 72;
+  string zei_k = 73;
+  string yosha_zei_k = 74;
+  double zeiritsu = 75;
+  double yosha_zeiritsu = 76;
+  int32 untenshu_uriage = 77;
+  int32 joshu1_uriage = 78;
+  int32 joshu2_uriage = 79;
+  int32 yuso_shunyu_furikae = 80;
+  int32 uriage_kingaku_furikae = 81;
+  int32 kazei_uriage = 82;
+  int32 hikazei_uriage = 83;
+  int32 kazei_shiharai = 84;
+  int32 hikazei_shiharai = 85;
+  string hatchiiki_c = 86;
+  string chakuchiiki_c = 87;
+  optional string rikunkyoku = 88;
+  optional double yoseki = 89;
+  string juryo_kakunin_tenpusho_k = 90;
+  optional string saishu_koshin = 91;
+  int32 lc = 92;
+  optional string koguchi_k = 93;
+  optional string unso_gaisha_n = 94;
+  optional string jomuin_n = 95;
+  optional string renrakusaki = 96;
+  optional double tani_juryo = 97;
+  string shiharai_kakutei_k = 98;
+  optional string biko2 = 99;
+  optional double yobi1 = 100;
+  optional double yobi2 = 101;
+  optional string yobi3 = 102;
+  optional string yobi4 = 103;
+  optional string yobi5 = 104;
+  optional string yobi6 = 105;
+  optional string yobi7 = 106;
+}
+
+// db_ShainMaster メッセージ（43カラム全て）
+message db_ShainMaster {
+  string shain_c = 1;
+  optional string shain_n = 2;
+  optional string shain_r = 3;
+  optional string shain_f = 4;
+  optional string yubin_bango = 5;
+  optional string jusho1 = 6;
+  optional string jusho2 = 7;
+  optional string denwa_bango = 8;
+  optional string keitai_bango = 9;
+  string shain_k = 10;
+  string seibetsu = 11;
+  string ketsuekigata = 12;
+  optional string seinengappi = 13;
+  optional string nyusha_nengappi = 14;
+  optional string taishoku_nengappi = 15;
+  string dai_bunrui1 = 16;
+  string chu_bunrui1 = 17;
+  string sho_bunrui1 = 18;
+  string dai_bunrui2 = 19;
+  string chu_bunrui2 = 20;
+  string sho_bunrui2 = 21;
+  optional string kodan_plate = 22;
+  int32 uriage_mokuhyogaku = 23;
+  string unten_menkyo_k = 24;
+  optional string menkyosho_bango = 25;
+  optional string jikai_koshinbi = 26;
+  string jisha_yosha_k = 27;
+  string keisan_k = 28;
+  double shiharai_ritsu = 29;
+  string hasu_k = 30;
+  string bumon_c = 31;
+  string unchin_pattern_c = 32;
+  optional string kiji1 = 33;
+  optional string kiji2 = 34;
+  optional string kiji3 = 35;
+  optional string kiji4 = 36;
+  optional string kiji5 = 37;
+  optional string yobi1 = 38;
+  optional string yobi2 = 39;
+  optional string yobi3 = 40;
+  optional string yobi4 = 41;
+  optional string yobi5 = 42;
+  string kinmu_taikei_c = 43;
+}
+
+// db_ChiikiMaster メッセージ（4カラム全て）
+message db_ChiikiMaster {
+  string chiiki_c = 1;
+  optional string chiiki_n = 2;
+  optional string chiiki_r = 3;
+  optional string chiiki_f = 4;
+}
+
+// db_ChikuMaster メッセージ（20カラム全て）
+message db_ChikuMaster {
+  string chiku_c = 1;
+  optional string chiku_n = 2;
+  optional string chiku_r = 3;
+  optional string chiku_f = 4;
+  string chiiki_c = 5;
+  optional string yubin_bango = 6;
+  optional string jusho1 = 7;
+  optional string jusho2 = 8;
+  optional string denwa_bango = 9;
+  optional string fax_bango = 10;
+  optional string tantosha = 11;
+  optional string yobi1 = 12;
+  optional string yobi2 = 13;
+  optional string yobi3 = 14;
+  optional string yobi4 = 15;
+  optional string yobi5 = 16;
+  string dgr_tokuisaki_c = 17;
+  string dgr_tokuisaki_h = 18;
+  string dgr_hinmei_c = 19;
+  string dgr_hinmei_h = 20;
+}
+
+// UntenNippoMeisai用リクエスト/レスポンス
+message db_GetUntenNippoMeisaiRequest {
+  string nippo_k = 1;
+  string haisha_k = 2;
+  string sharyo_c = 3;
+}
+
+message db_GetUntenNippoMeisaiBySharyoCRequest {
+  string sharyo_c = 1;
+  int32 limit = 2;
+}
+
+message db_GetUntenNippoMeisaiByDateRangeRequest {
+  string start_date = 1;
+  string end_date = 2;
+  int32 limit = 3;
+  int32 offset = 4;
+}
+
+message db_ListUntenNippoMeisaiRequest {
+  int32 limit = 1;
+  int32 offset = 2;
+  optional string order_by = 3;
+}
+
+message db_UntenNippoMeisaiResponse {
+  db_UntenNippoMeisai unten_nippo_meisai = 1;
+}
+
+message db_ListUntenNippoMeisaiResponse {
+  repeated db_UntenNippoMeisai items = 1;
+  int32 total_count = 2;
+}
+
+// ShainMaster用リクエスト/レスポンス
+message db_GetShainMasterRequest {
+  string shain_c = 1;
+}
+
+message db_GetShainMasterByBumonCRequest {
+  string bumon_c = 1;
+}
+
+message db_ListShainMasterRequest {
+  int32 limit = 1;
+  int32 offset = 2;
+  optional string order_by = 3;
+}
+
+message db_ShainMasterResponse {
+  db_ShainMaster shain_master = 1;
+}
+
+message db_ListShainMasterResponse {
+  repeated db_ShainMaster items = 1;
+  int32 total_count = 2;
+}
+
+// ChiikiMaster用リクエスト/レスポンス
+message db_GetChiikiMasterRequest {
+  string chiiki_c = 1;
+}
+
+message db_ListChiikiMasterRequest {
+  int32 limit = 1;
+  int32 offset = 2;
+  optional string order_by = 3;
+}
+
+message db_ChiikiMasterResponse {
+  db_ChiikiMaster chiiki_master = 1;
+}
+
+message db_ListChiikiMasterResponse {
+  repeated db_ChiikiMaster items = 1;
+  int32 total_count = 2;
+}
+
+// ChikuMaster用リクエスト/レスポンス
+message db_GetChikuMasterRequest {
+  string chiku_c = 1;
+}
+
+message db_GetChikuMasterByChiikiCRequest {
+  string chiiki_c = 1;
+}
+
+message db_ListChikuMasterRequest {
+  int32 limit = 1;
+  int32 offset = 2;
+  optional string order_by = 3;
+}
+
+message db_ChikuMasterResponse {
+  db_ChikuMaster chiku_master = 1;
+}
+
+message db_ListChikuMasterResponse {
+  repeated db_ChikuMaster items = 1;
+  int32 total_count = 2;
+}
+
+// 共通メッセージ
+message db_Empty {}

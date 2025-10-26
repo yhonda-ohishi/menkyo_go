@@ -1,0 +1,11 @@
+go 1.24.0
+
+use (
+    .                    // menkyo_go
+    ./db_service         // sparse checkoutで取得したdb_service
+)
+
+// 使い方:
+// 1. setup_db_service.ps1を実行してdb_serviceを取得
+// 2. このファイルを go.work にリネーム
+// 3. go buildすると、ローカルのdb_serviceを参照する

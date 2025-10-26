@@ -152,7 +152,7 @@ func (lr *LicenseReader) ReadCard(readerName string) (*LicenseData, error) {
 
 	// CardIDを生成
 	if data.CardType == CardTypeDriverLicense {
-		data.CardID = strings.ToUpper(data.ATR + data.ExpiryDate)
+		data.CardID = strings.ToUpper(data.ExpiryDate)
 	} else {
 		data.CardID = strings.ToUpper(data.FeliCaUID)
 	}

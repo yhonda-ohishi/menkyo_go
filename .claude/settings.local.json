@@ -5,7 +5,10 @@
       "Read(//c/**)",
       "Bash(go build:*)",
       "Bash(./bin/reader.exe:*)",
-      "Bash(go run:*)"
+      "Bash(go run:*)",
+      "Bash(go mod tidy:*)",
+      "Bash(nm:*)",
+      "Bash(cat:*)"
     ],
     "deny": [],
     "ask": []
