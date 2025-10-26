@@ -19,6 +19,7 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
+	AuthService_Heartbeat_FullMethodName                = "/auth.v1.AuthService/Heartbeat"
 	AuthService_GetAuthorizationURL_FullMethodName      = "/auth.v1.AuthService/GetAuthorizationURL"
 	AuthService_ExchangeCode_FullMethodName             = "/auth.v1.AuthService/ExchangeCode"
 	AuthService_GetProfile_FullMethodName               = "/auth.v1.AuthService/GetProfile"
@@ -47,6 +48,8 @@ const (
 //
 // AuthService handles WOFF (Works Office) authentication operations
 type AuthServiceClient interface {
+	// Heartbeat returns server status and timestamp
+	Heartbeat(ctx context.Context, in *HeartbeatRequest, opts ...grpc.CallOption) (*HeartbeatResponse, error)
 	// GetAuthorizationURL returns the WOFF OAuth authorization URL
 	GetAuthorizationURL(ctx context.Context, in *GetAuthorizationURLRequest, opts ...grpc.CallOption) (*GetAuthorizationURLResponse, error)
 	// ExchangeCode exchanges authorization code for access token
@@ -95,6 +98,16 @@ type authServiceClient struct {
 
 func NewAuthServiceClient(cc grpc.ClientConnInterface) AuthServiceClient {
 	return &authServiceClient{cc}
+}
+
+func (c *authServiceClient) Heartbeat(ctx context.Context, in *HeartbeatRequest, opts ...grpc.CallOption) (*HeartbeatResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(HeartbeatResponse)
+	err := c.cc.Invoke(ctx, AuthService_Heartbeat_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *authServiceClient) GetAuthorizationURL(ctx context.Context, in *GetAuthorizationURLRequest, opts ...grpc.CallOption) (*GetAuthorizationURLResponse, error) {
@@ -303,6 +316,8 @@ func (c *authServiceClient) DeleteTimeCardLog(ctx context.Context, in *DeleteTim
 //
 // AuthService handles WOFF (Works Office) authentication operations
 type AuthServiceServer interface {
+	// Heartbeat returns server status and timestamp
+	Heartbeat(context.Context, *HeartbeatRequest) (*HeartbeatResponse, error)
 	// GetAuthorizationURL returns the WOFF OAuth authorization URL
 	GetAuthorizationURL(context.Context, *GetAuthorizationURLRequest) (*GetAuthorizationURLResponse, error)
 	// ExchangeCode exchanges authorization code for access token
@@ -353,6 +368,9 @@ type AuthServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedAuthServiceServer struct{}
 
+func (UnimplementedAuthServiceServer) Heartbeat(context.Context, *HeartbeatRequest) (*HeartbeatResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Heartbeat not implemented")
+}
 func (UnimplementedAuthServiceServer) GetAuthorizationURL(context.Context, *GetAuthorizationURLRequest) (*GetAuthorizationURLResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetAuthorizationURL not implemented")
 }
@@ -432,6 +450,24 @@ func RegisterAuthServiceServer(s grpc.ServiceRegistrar, srv AuthServiceServer) {
 		t.testEmbeddedByValue()
 	}
 	s.RegisterService(&AuthService_ServiceDesc, srv)
+}
+
+func _AuthService_Heartbeat_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(HeartbeatRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServiceServer).Heartbeat(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthService_Heartbeat_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServiceServer).Heartbeat(ctx, req.(*HeartbeatRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _AuthService_GetAuthorizationURL_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -801,6 +837,10 @@ var AuthService_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "auth.v1.AuthService",
 	HandlerType: (*AuthServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "Heartbeat",
+			Handler:    _AuthService_Heartbeat_Handler,
+		},
 		{
 			MethodName: "GetAuthorizationURL",
 			Handler:    _AuthService_GetAuthorizationURL_Handler,

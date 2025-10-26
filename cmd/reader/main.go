@@ -156,8 +156,33 @@ func main() {
 				logger.LogMessage("WARNING", fmt.Sprintf("Failed to connect to woff-sv: %v", err))
 			} else {
 				defer woffSvClient.Close()
-				log.Printf("Connected to woff-sv: %s", backendURL)
-				logger.LogMessage("INFO", "Connected to woff-sv")
+
+				// Heartbeatでサーバーの接続を確認
+				hb, err := woffSvClient.Heartbeat()
+				if err != nil {
+					log.Printf("Warning: woff-sv heartbeat failed: %v", err)
+					logger.LogMessage("WARNING", fmt.Sprintf("woff-sv heartbeat failed: %v", err))
+				} else {
+					log.Printf("Connected to woff-sv: %s (status: %s, version: %s)", backendURL, hb.Status, hb.Version)
+					logger.LogMessage("INFO", fmt.Sprintf("woff-sv heartbeat OK: status=%s, version=%s", hb.Status, hb.Version))
+				}
+
+				// 定期的にHeartbeatを送信（30秒間隔）
+				go func() {
+					ticker := time.NewTicker(30 * time.Second)
+					defer ticker.Stop()
+
+					for range ticker.C {
+						hb, err := woffSvClient.Heartbeat()
+						if err != nil {
+							log.Printf("Heartbeat failed: %v", err)
+							logger.LogMessage("WARNING", fmt.Sprintf("Heartbeat failed: %v", err))
+						} else {
+							log.Printf("Heartbeat OK (status: %s, timestamp: %s)", hb.Status, hb.Timestamp)
+							logger.LogMessage("DEBUG", fmt.Sprintf("Heartbeat OK: status=%s", hb.Status))
+						}
+					}
+				}()
 			}
 		}
 	} else {

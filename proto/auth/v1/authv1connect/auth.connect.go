@@ -33,6 +33,8 @@ const (
 // reflection-formatted method names, remove the leading slash and convert the remaining slash to a
 // period.
 const (
+	// AuthServiceHeartbeatProcedure is the fully-qualified name of the AuthService's Heartbeat RPC.
+	AuthServiceHeartbeatProcedure = "/auth.v1.AuthService/Heartbeat"
 	// AuthServiceGetAuthorizationURLProcedure is the fully-qualified name of the AuthService's
 	// GetAuthorizationURL RPC.
 	AuthServiceGetAuthorizationURLProcedure = "/auth.v1.AuthService/GetAuthorizationURL"
@@ -91,6 +93,8 @@ const (
 
 // AuthServiceClient is a client for the auth.v1.AuthService service.
 type AuthServiceClient interface {
+	// Heartbeat returns server status and timestamp
+	Heartbeat(context.Context, *connect.Request[v1.HeartbeatRequest]) (*connect.Response[v1.HeartbeatResponse], error)
 	// GetAuthorizationURL returns the WOFF OAuth authorization URL
 	GetAuthorizationURL(context.Context, *connect.Request[v1.GetAuthorizationURLRequest]) (*connect.Response[v1.GetAuthorizationURLResponse], error)
 	// ExchangeCode exchanges authorization code for access token
@@ -144,6 +148,12 @@ func NewAuthServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 	baseURL = strings.TrimRight(baseURL, "/")
 	authServiceMethods := v1.File_auth_v1_auth_proto.Services().ByName("AuthService").Methods()
 	return &authServiceClient{
+		heartbeat: connect.NewClient[v1.HeartbeatRequest, v1.HeartbeatResponse](
+			httpClient,
+			baseURL+AuthServiceHeartbeatProcedure,
+			connect.WithSchema(authServiceMethods.ByName("Heartbeat")),
+			connect.WithClientOptions(opts...),
+		),
 		getAuthorizationURL: connect.NewClient[v1.GetAuthorizationURLRequest, v1.GetAuthorizationURLResponse](
 			httpClient,
 			baseURL+AuthServiceGetAuthorizationURLProcedure,
@@ -269,6 +279,7 @@ func NewAuthServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 
 // authServiceClient implements AuthServiceClient.
 type authServiceClient struct {
+	heartbeat                *connect.Client[v1.HeartbeatRequest, v1.HeartbeatResponse]
 	getAuthorizationURL      *connect.Client[v1.GetAuthorizationURLRequest, v1.GetAuthorizationURLResponse]
 	exchangeCode             *connect.Client[v1.ExchangeCodeRequest, v1.ExchangeCodeResponse]
 	getProfile               *connect.Client[v1.GetProfileRequest, v1.GetProfileResponse]
@@ -289,6 +300,11 @@ type authServiceClient struct {
 	createTimeCardLog        *connect.Client[v1.CreateTimeCardLogRequest, v1.TimeCardLogResponse]
 	updateTimeCardLog        *connect.Client[v1.UpdateTimeCardLogRequest, v1.TimeCardLogResponse]
 	deleteTimeCardLog        *connect.Client[v1.DeleteTimeCardLogRequest, v1.DeleteTimeCardLogResponse]
+}
+
+// Heartbeat calls auth.v1.AuthService.Heartbeat.
+func (c *authServiceClient) Heartbeat(ctx context.Context, req *connect.Request[v1.HeartbeatRequest]) (*connect.Response[v1.HeartbeatResponse], error) {
+	return c.heartbeat.CallUnary(ctx, req)
 }
 
 // GetAuthorizationURL calls auth.v1.AuthService.GetAuthorizationURL.
@@ -393,6 +409,8 @@ func (c *authServiceClient) DeleteTimeCardLog(ctx context.Context, req *connect.
 
 // AuthServiceHandler is an implementation of the auth.v1.AuthService service.
 type AuthServiceHandler interface {
+	// Heartbeat returns server status and timestamp
+	Heartbeat(context.Context, *connect.Request[v1.HeartbeatRequest]) (*connect.Response[v1.HeartbeatResponse], error)
 	// GetAuthorizationURL returns the WOFF OAuth authorization URL
 	GetAuthorizationURL(context.Context, *connect.Request[v1.GetAuthorizationURLRequest]) (*connect.Response[v1.GetAuthorizationURLResponse], error)
 	// ExchangeCode exchanges authorization code for access token
@@ -442,6 +460,12 @@ type AuthServiceHandler interface {
 // and JSON codecs. They also support gzip compression.
 func NewAuthServiceHandler(svc AuthServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
 	authServiceMethods := v1.File_auth_v1_auth_proto.Services().ByName("AuthService").Methods()
+	authServiceHeartbeatHandler := connect.NewUnaryHandler(
+		AuthServiceHeartbeatProcedure,
+		svc.Heartbeat,
+		connect.WithSchema(authServiceMethods.ByName("Heartbeat")),
+		connect.WithHandlerOptions(opts...),
+	)
 	authServiceGetAuthorizationURLHandler := connect.NewUnaryHandler(
 		AuthServiceGetAuthorizationURLProcedure,
 		svc.GetAuthorizationURL,
@@ -564,6 +588,8 @@ func NewAuthServiceHandler(svc AuthServiceHandler, opts ...connect.HandlerOption
 	)
 	return "/auth.v1.AuthService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
+		case AuthServiceHeartbeatProcedure:
+			authServiceHeartbeatHandler.ServeHTTP(w, r)
 		case AuthServiceGetAuthorizationURLProcedure:
 			authServiceGetAuthorizationURLHandler.ServeHTTP(w, r)
 		case AuthServiceExchangeCodeProcedure:
@@ -612,6 +638,10 @@ func NewAuthServiceHandler(svc AuthServiceHandler, opts ...connect.HandlerOption
 
 // UnimplementedAuthServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedAuthServiceHandler struct{}
+
+func (UnimplementedAuthServiceHandler) Heartbeat(context.Context, *connect.Request[v1.HeartbeatRequest]) (*connect.Response[v1.HeartbeatResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("auth.v1.AuthService.Heartbeat is not implemented"))
+}
 
 func (UnimplementedAuthServiceHandler) GetAuthorizationURL(context.Context, *connect.Request[v1.GetAuthorizationURLRequest]) (*connect.Response[v1.GetAuthorizationURLResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("auth.v1.AuthService.GetAuthorizationURL is not implemented"))

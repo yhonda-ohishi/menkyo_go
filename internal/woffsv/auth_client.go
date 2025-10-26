@@ -42,6 +42,21 @@ func (c *AuthClient) Close() error {
 	return nil
 }
 
+// Heartbeat サーバーのヘルスチェック（認証不要）
+func (c *AuthClient) Heartbeat() (*authv1.HeartbeatResponse, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	req := connect.NewRequest(&authv1.HeartbeatRequest{})
+
+	resp, err := c.client.Heartbeat(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to send heartbeat: %w", err)
+	}
+
+	return resp.Msg, nil
+}
+
 // CreateTimeCard TimeCardLogを作成 (DEV環境)
 func (c *AuthClient) CreateTimeCard(driverID int32, cardID string, state string, machineIP string) (*authv1.TimeCardLog, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)

@@ -2604,6 +2604,104 @@ func (x *DeleteTimeCardLogResponse) GetMessage() string {
 	return ""
 }
 
+// HeartbeatRequest is an empty request for heartbeat
+type HeartbeatRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *HeartbeatRequest) Reset() {
+	*x = HeartbeatRequest{}
+	mi := &file_auth_v1_auth_proto_msgTypes[38]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *HeartbeatRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*HeartbeatRequest) ProtoMessage() {}
+
+func (x *HeartbeatRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_auth_v1_auth_proto_msgTypes[38]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use HeartbeatRequest.ProtoReflect.Descriptor instead.
+func (*HeartbeatRequest) Descriptor() ([]byte, []int) {
+	return file_auth_v1_auth_proto_rawDescGZIP(), []int{38}
+}
+
+// HeartbeatResponse returns server status
+type HeartbeatResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Status        string                 `protobuf:"bytes,1,opt,name=status,proto3" json:"status,omitempty"`       // Server status (e.g., "ok")
+	Timestamp     string                 `protobuf:"bytes,2,opt,name=timestamp,proto3" json:"timestamp,omitempty"` // Current server timestamp (RFC3339 format)
+	Version       string                 `protobuf:"bytes,3,opt,name=version,proto3" json:"version,omitempty"`     // Server version (optional)
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *HeartbeatResponse) Reset() {
+	*x = HeartbeatResponse{}
+	mi := &file_auth_v1_auth_proto_msgTypes[39]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *HeartbeatResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*HeartbeatResponse) ProtoMessage() {}
+
+func (x *HeartbeatResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_auth_v1_auth_proto_msgTypes[39]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use HeartbeatResponse.ProtoReflect.Descriptor instead.
+func (*HeartbeatResponse) Descriptor() ([]byte, []int) {
+	return file_auth_v1_auth_proto_rawDescGZIP(), []int{39}
+}
+
+func (x *HeartbeatResponse) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *HeartbeatResponse) GetTimestamp() string {
+	if x != nil {
+		return x.Timestamp
+	}
+	return ""
+}
+
+func (x *HeartbeatResponse) GetVersion() string {
+	if x != nil {
+		return x.Version
+	}
+	return ""
+}
+
 var File_auth_v1_auth_proto protoreflect.FileDescriptor
 
 const file_auth_v1_auth_proto_rawDesc = "" +
@@ -2800,7 +2898,12 @@ const file_auth_v1_auth_proto_rawDesc = "" +
 	"\x02id\x18\x02 \x01(\x05R\x02id\"O\n" +
 	"\x19DeleteTimeCardLogResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
-	"\amessage\x18\x02 \x01(\tR\amessage*h\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\"\x12\n" +
+	"\x10HeartbeatRequest\"c\n" +
+	"\x11HeartbeatResponse\x12\x16\n" +
+	"\x06status\x18\x01 \x01(\tR\x06status\x12\x1c\n" +
+	"\ttimestamp\x18\x02 \x01(\tR\ttimestamp\x12\x18\n" +
+	"\aversion\x18\x03 \x01(\tR\aversion*h\n" +
 	"\bUserRole\x12\x19\n" +
 	"\x15USER_ROLE_UNSPECIFIED\x10\x00\x12\x13\n" +
 	"\x0fUSER_ROLE_ADMIN\x10\x01\x12\x18\n" +
@@ -2809,8 +2912,9 @@ const file_auth_v1_auth_proto_rawDesc = "" +
 	"\rDBEnvironment\x12\x1e\n" +
 	"\x1aDB_ENVIRONMENT_UNSPECIFIED\x10\x00\x12\x17\n" +
 	"\x13DB_ENVIRONMENT_PROD\x10\x01\x12\x16\n" +
-	"\x12DB_ENVIRONMENT_DEV\x10\x022\xe3\f\n" +
-	"\vAuthService\x12`\n" +
+	"\x12DB_ENVIRONMENT_DEV\x10\x022\xa7\r\n" +
+	"\vAuthService\x12B\n" +
+	"\tHeartbeat\x12\x19.auth.v1.HeartbeatRequest\x1a\x1a.auth.v1.HeartbeatResponse\x12`\n" +
 	"\x13GetAuthorizationURL\x12#.auth.v1.GetAuthorizationURLRequest\x1a$.auth.v1.GetAuthorizationURLResponse\x12K\n" +
 	"\fExchangeCode\x12\x1c.auth.v1.ExchangeCodeRequest\x1a\x1d.auth.v1.ExchangeCodeResponse\x12E\n" +
 	"\n" +
@@ -2847,7 +2951,7 @@ func file_auth_v1_auth_proto_rawDescGZIP() []byte {
 }
 
 var file_auth_v1_auth_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_auth_v1_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 38)
+var file_auth_v1_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 40)
 var file_auth_v1_auth_proto_goTypes = []any{
 	(UserRole)(0),                           // 0: auth.v1.UserRole
 	(DBEnvironment)(0),                      // 1: auth.v1.DBEnvironment
@@ -2889,6 +2993,8 @@ var file_auth_v1_auth_proto_goTypes = []any{
 	(*UpdateTimeCardLogRequest)(nil),        // 37: auth.v1.UpdateTimeCardLogRequest
 	(*DeleteTimeCardLogRequest)(nil),        // 38: auth.v1.DeleteTimeCardLogRequest
 	(*DeleteTimeCardLogResponse)(nil),       // 39: auth.v1.DeleteTimeCardLogResponse
+	(*HeartbeatRequest)(nil),                // 40: auth.v1.HeartbeatRequest
+	(*HeartbeatResponse)(nil),               // 41: auth.v1.HeartbeatResponse
 }
 var file_auth_v1_auth_proto_depIdxs = []int32{
 	13, // 0: auth.v1.ListUsersResponse.users:type_name -> auth.v1.User
@@ -2901,48 +3007,50 @@ var file_auth_v1_auth_proto_depIdxs = []int32{
 	1,  // 7: auth.v1.ListTimeCardLogsRequest.environment:type_name -> auth.v1.DBEnvironment
 	1,  // 8: auth.v1.ListTimeCardLogsByCardIDRequest.environment:type_name -> auth.v1.DBEnvironment
 	30, // 9: auth.v1.ListTimeCardLogsResponse.logs:type_name -> auth.v1.TimeCardLog
-	2,  // 10: auth.v1.AuthService.GetAuthorizationURL:input_type -> auth.v1.GetAuthorizationURLRequest
-	4,  // 11: auth.v1.AuthService.ExchangeCode:input_type -> auth.v1.ExchangeCodeRequest
-	6,  // 12: auth.v1.AuthService.GetProfile:input_type -> auth.v1.GetProfileRequest
-	8,  // 13: auth.v1.AuthService.RefreshToken:input_type -> auth.v1.RefreshTokenRequest
-	10, // 14: auth.v1.AuthService.VerifyToken:input_type -> auth.v1.VerifyTokenRequest
-	12, // 15: auth.v1.AuthService.ListUsers:input_type -> auth.v1.ListUsersRequest
-	15, // 16: auth.v1.AuthService.UpdateUserRoles:input_type -> auth.v1.UpdateUserRolesRequest
-	17, // 17: auth.v1.AuthService.DeleteUser:input_type -> auth.v1.DeleteUserRequest
-	19, // 18: auth.v1.AuthService.RestoreUser:input_type -> auth.v1.RestoreUserRequest
-	22, // 19: auth.v1.AuthService.GetTimeCard:input_type -> auth.v1.GetTimeCardRequest
-	24, // 20: auth.v1.AuthService.ListTimeCards:input_type -> auth.v1.ListTimeCardsRequest
-	26, // 21: auth.v1.AuthService.CreateTimeCard:input_type -> auth.v1.CreateTimeCardRequest
-	27, // 22: auth.v1.AuthService.UpdateTimeCard:input_type -> auth.v1.UpdateTimeCardRequest
-	28, // 23: auth.v1.AuthService.DeleteTimeCard:input_type -> auth.v1.DeleteTimeCardRequest
-	31, // 24: auth.v1.AuthService.GetTimeCardLog:input_type -> auth.v1.GetTimeCardLogRequest
-	33, // 25: auth.v1.AuthService.ListTimeCardLogs:input_type -> auth.v1.ListTimeCardLogsRequest
-	34, // 26: auth.v1.AuthService.ListTimeCardLogsByCardID:input_type -> auth.v1.ListTimeCardLogsByCardIDRequest
-	36, // 27: auth.v1.AuthService.CreateTimeCardLog:input_type -> auth.v1.CreateTimeCardLogRequest
-	37, // 28: auth.v1.AuthService.UpdateTimeCardLog:input_type -> auth.v1.UpdateTimeCardLogRequest
-	38, // 29: auth.v1.AuthService.DeleteTimeCardLog:input_type -> auth.v1.DeleteTimeCardLogRequest
-	3,  // 30: auth.v1.AuthService.GetAuthorizationURL:output_type -> auth.v1.GetAuthorizationURLResponse
-	5,  // 31: auth.v1.AuthService.ExchangeCode:output_type -> auth.v1.ExchangeCodeResponse
-	7,  // 32: auth.v1.AuthService.GetProfile:output_type -> auth.v1.GetProfileResponse
-	9,  // 33: auth.v1.AuthService.RefreshToken:output_type -> auth.v1.RefreshTokenResponse
-	11, // 34: auth.v1.AuthService.VerifyToken:output_type -> auth.v1.VerifyTokenResponse
-	14, // 35: auth.v1.AuthService.ListUsers:output_type -> auth.v1.ListUsersResponse
-	16, // 36: auth.v1.AuthService.UpdateUserRoles:output_type -> auth.v1.UpdateUserRolesResponse
-	18, // 37: auth.v1.AuthService.DeleteUser:output_type -> auth.v1.DeleteUserResponse
-	20, // 38: auth.v1.AuthService.RestoreUser:output_type -> auth.v1.RestoreUserResponse
-	23, // 39: auth.v1.AuthService.GetTimeCard:output_type -> auth.v1.TimeCardResponse
-	25, // 40: auth.v1.AuthService.ListTimeCards:output_type -> auth.v1.ListTimeCardsResponse
-	23, // 41: auth.v1.AuthService.CreateTimeCard:output_type -> auth.v1.TimeCardResponse
-	23, // 42: auth.v1.AuthService.UpdateTimeCard:output_type -> auth.v1.TimeCardResponse
-	29, // 43: auth.v1.AuthService.DeleteTimeCard:output_type -> auth.v1.DeleteTimeCardResponse
-	32, // 44: auth.v1.AuthService.GetTimeCardLog:output_type -> auth.v1.TimeCardLogResponse
-	35, // 45: auth.v1.AuthService.ListTimeCardLogs:output_type -> auth.v1.ListTimeCardLogsResponse
-	35, // 46: auth.v1.AuthService.ListTimeCardLogsByCardID:output_type -> auth.v1.ListTimeCardLogsResponse
-	32, // 47: auth.v1.AuthService.CreateTimeCardLog:output_type -> auth.v1.TimeCardLogResponse
-	32, // 48: auth.v1.AuthService.UpdateTimeCardLog:output_type -> auth.v1.TimeCardLogResponse
-	39, // 49: auth.v1.AuthService.DeleteTimeCardLog:output_type -> auth.v1.DeleteTimeCardLogResponse
-	30, // [30:50] is the sub-list for method output_type
-	10, // [10:30] is the sub-list for method input_type
+	40, // 10: auth.v1.AuthService.Heartbeat:input_type -> auth.v1.HeartbeatRequest
+	2,  // 11: auth.v1.AuthService.GetAuthorizationURL:input_type -> auth.v1.GetAuthorizationURLRequest
+	4,  // 12: auth.v1.AuthService.ExchangeCode:input_type -> auth.v1.ExchangeCodeRequest
+	6,  // 13: auth.v1.AuthService.GetProfile:input_type -> auth.v1.GetProfileRequest
+	8,  // 14: auth.v1.AuthService.RefreshToken:input_type -> auth.v1.RefreshTokenRequest
+	10, // 15: auth.v1.AuthService.VerifyToken:input_type -> auth.v1.VerifyTokenRequest
+	12, // 16: auth.v1.AuthService.ListUsers:input_type -> auth.v1.ListUsersRequest
+	15, // 17: auth.v1.AuthService.UpdateUserRoles:input_type -> auth.v1.UpdateUserRolesRequest
+	17, // 18: auth.v1.AuthService.DeleteUser:input_type -> auth.v1.DeleteUserRequest
+	19, // 19: auth.v1.AuthService.RestoreUser:input_type -> auth.v1.RestoreUserRequest
+	22, // 20: auth.v1.AuthService.GetTimeCard:input_type -> auth.v1.GetTimeCardRequest
+	24, // 21: auth.v1.AuthService.ListTimeCards:input_type -> auth.v1.ListTimeCardsRequest
+	26, // 22: auth.v1.AuthService.CreateTimeCard:input_type -> auth.v1.CreateTimeCardRequest
+	27, // 23: auth.v1.AuthService.UpdateTimeCard:input_type -> auth.v1.UpdateTimeCardRequest
+	28, // 24: auth.v1.AuthService.DeleteTimeCard:input_type -> auth.v1.DeleteTimeCardRequest
+	31, // 25: auth.v1.AuthService.GetTimeCardLog:input_type -> auth.v1.GetTimeCardLogRequest
+	33, // 26: auth.v1.AuthService.ListTimeCardLogs:input_type -> auth.v1.ListTimeCardLogsRequest
+	34, // 27: auth.v1.AuthService.ListTimeCardLogsByCardID:input_type -> auth.v1.ListTimeCardLogsByCardIDRequest
+	36, // 28: auth.v1.AuthService.CreateTimeCardLog:input_type -> auth.v1.CreateTimeCardLogRequest
+	37, // 29: auth.v1.AuthService.UpdateTimeCardLog:input_type -> auth.v1.UpdateTimeCardLogRequest
+	38, // 30: auth.v1.AuthService.DeleteTimeCardLog:input_type -> auth.v1.DeleteTimeCardLogRequest
+	41, // 31: auth.v1.AuthService.Heartbeat:output_type -> auth.v1.HeartbeatResponse
+	3,  // 32: auth.v1.AuthService.GetAuthorizationURL:output_type -> auth.v1.GetAuthorizationURLResponse
+	5,  // 33: auth.v1.AuthService.ExchangeCode:output_type -> auth.v1.ExchangeCodeResponse
+	7,  // 34: auth.v1.AuthService.GetProfile:output_type -> auth.v1.GetProfileResponse
+	9,  // 35: auth.v1.AuthService.RefreshToken:output_type -> auth.v1.RefreshTokenResponse
+	11, // 36: auth.v1.AuthService.VerifyToken:output_type -> auth.v1.VerifyTokenResponse
+	14, // 37: auth.v1.AuthService.ListUsers:output_type -> auth.v1.ListUsersResponse
+	16, // 38: auth.v1.AuthService.UpdateUserRoles:output_type -> auth.v1.UpdateUserRolesResponse
+	18, // 39: auth.v1.AuthService.DeleteUser:output_type -> auth.v1.DeleteUserResponse
+	20, // 40: auth.v1.AuthService.RestoreUser:output_type -> auth.v1.RestoreUserResponse
+	23, // 41: auth.v1.AuthService.GetTimeCard:output_type -> auth.v1.TimeCardResponse
+	25, // 42: auth.v1.AuthService.ListTimeCards:output_type -> auth.v1.ListTimeCardsResponse
+	23, // 43: auth.v1.AuthService.CreateTimeCard:output_type -> auth.v1.TimeCardResponse
+	23, // 44: auth.v1.AuthService.UpdateTimeCard:output_type -> auth.v1.TimeCardResponse
+	29, // 45: auth.v1.AuthService.DeleteTimeCard:output_type -> auth.v1.DeleteTimeCardResponse
+	32, // 46: auth.v1.AuthService.GetTimeCardLog:output_type -> auth.v1.TimeCardLogResponse
+	35, // 47: auth.v1.AuthService.ListTimeCardLogs:output_type -> auth.v1.ListTimeCardLogsResponse
+	35, // 48: auth.v1.AuthService.ListTimeCardLogsByCardID:output_type -> auth.v1.ListTimeCardLogsResponse
+	32, // 49: auth.v1.AuthService.CreateTimeCardLog:output_type -> auth.v1.TimeCardLogResponse
+	32, // 50: auth.v1.AuthService.UpdateTimeCardLog:output_type -> auth.v1.TimeCardLogResponse
+	39, // 51: auth.v1.AuthService.DeleteTimeCardLog:output_type -> auth.v1.DeleteTimeCardLogResponse
+	31, // [31:52] is the sub-list for method output_type
+	10, // [10:31] is the sub-list for method input_type
 	10, // [10:10] is the sub-list for extension type_name
 	10, // [10:10] is the sub-list for extension extendee
 	0,  // [0:10] is the sub-list for field type_name
@@ -2959,7 +3067,7 @@ func file_auth_v1_auth_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_auth_v1_auth_proto_rawDesc), len(file_auth_v1_auth_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   38,
+			NumMessages:   40,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
